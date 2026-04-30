@@ -8,9 +8,10 @@ import { createCapabilityPackageFromManifest } from "../../protocol/manifest.js"
 import type { CapabilityPackage } from "../../protocol/package.js";
 
 const MANIFEST_GLOB = "**/*.capability.json";
+export const CAPABILITY_PACKAGE_ROOT = ".deadmouse/capabilities";
 
 export async function discoverCapabilityPackages(rootDir: string): Promise<CapabilityPackage[]> {
-  const packageRoot = path.join(rootDir, ".deadmouse", "capabilities");
+  const packageRoot = getCapabilityPackageRoot(rootDir);
   const files = await fg(MANIFEST_GLOB, {
     cwd: packageRoot,
     absolute: true,
@@ -27,7 +28,23 @@ export async function discoverCapabilityPackages(rootDir: string): Promise<Capab
   return packages;
 }
 
-async function readCapabilityPackageManifest(filePath: string): Promise<CapabilityPackage> {
+export function getCapabilityPackageRoot(rootDir: string): string {
+  return path.join(rootDir, ".deadmouse", "capabilities");
+}
+
+export async function listCapabilityPackageManifestFiles(rootDir: string): Promise<string[]> {
+  const packageRoot = getCapabilityPackageRoot(rootDir);
+  return fg(MANIFEST_GLOB, {
+    cwd: packageRoot,
+    absolute: true,
+    dot: true,
+    onlyFiles: true,
+    suppressErrors: true,
+    ignore: ["**/node_modules/**", "**/.git/**", "**/dist/**"],
+  }).then((files) => files.sort((left, right) => left.localeCompare(right))).catch(() => []);
+}
+
+export async function readCapabilityPackageManifest(filePath: string): Promise<CapabilityPackage> {
   const raw = await fs.readFile(filePath, "utf8");
   const manifest = parseCapabilityPackageManifest(JSON.parse(raw));
   return createCapabilityPackageFromManifest({

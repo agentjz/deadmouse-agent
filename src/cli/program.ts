@@ -4,9 +4,11 @@ import packageJson from "../../package.json";
 import { extractCliOverrides } from "./configValues.js";
 import type { CliProgramDependencies } from "./dependencies.js";
 import { resolveCliRuntime } from "./runtime.js";
+import { registerCapabilityCommands } from "./commands/capability.js";
 import { registerConfigCommands } from "./commands/config.js";
 import { registerDoctorCommand } from "./commands/doctor.js";
 import { registerProjectCommands } from "./commands/project.js";
+import { registerRegressionCommands } from "./commands/regression.js";
 import { registerSessionCommands } from "./commands/session.js";
 import { registerWorkerCommands } from "./commands/worker.js";
 import { writeStderr, writeStdout, writeStdoutLine } from "../utils/stdio.js";
@@ -58,6 +60,14 @@ export function buildCliProgram(dependencies: CliProgramDependencies = {}): Comm
     resolveRuntime,
   });
   registerDoctorCommand(program, {
+    getCliOverrides,
+    resolveRuntime,
+  });
+  registerCapabilityCommands(program, {
+    getCliOverrides,
+    resolveRuntime,
+  });
+  registerRegressionCommands(program, {
     getCliOverrides,
     resolveRuntime,
   });

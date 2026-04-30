@@ -12,6 +12,7 @@
 - provider capability/profile 层
 - model capability profile 层
 - wire API adapter 层
+- scripted provider harness 层
 
 当前实现已正式支持 GPT-5.4，并保留 OpenAI-compatible chat provider 的适配能力。
 
@@ -24,6 +25,7 @@
 - `src/agent/provider/contract.ts`
 - `src/agent/provider/responsesAdapter.ts`
 - `src/agent/provider/chatCompletionsAdapter.ts`
+- `src/agent/provider/harness.ts`
 - `src/agent/api.ts`
 - `src/config/runtime.ts`
 - `src/config/store.ts`
@@ -35,6 +37,7 @@
 - `provider capability/profile`：根据 provider、model 与显式运行配置决定 wire API、超时和 reasoning 策略。
 - `model capability profile`：把模型能力差异表达为事实画像，包括 tier、tool use reliability、context policy 和 harness surface facts。
 - `wire API adapter`：把统一请求映射成 `responses` 或 `chat.completions` 协议，再归一回统一响应结构。
+- `scripted provider harness`：离线脚本化 provider 行为，用于回归测试文本、工具调用、空响应、错误和中断，不访问网络，不替代正式 provider。
 
 ## 真相源与状态归属
 
@@ -71,6 +74,7 @@ provider 相关正式状态当前归属如下：
 - doctor 与真实请求链路共用同一套 provider 选择与 base URL 规则
 - model capability profile 当前记录 provider、model、wire API、reasoning 可见性、tier、tool use reliability、context policy 和 harness surface facts
 - model capability profile 是事实画像，不自动改变工具可见性，不自动选择能力，不替 Lead 判断任务路线
+- scripted provider harness 当前能稳定复现 text、tool_calls、empty、error、abort 这五类 provider 行为，并记录请求事实和 metric 回调
 
 ## 失败路径与异常路径
 
@@ -80,15 +84,17 @@ provider 相关正式状态当前归属如下：
 - 慢中转站使用更宽松的超时，不因探测超时过早误判失败
 - 运行配置只认正式配置入口，不在 CLI、宿主或工具内部重读第二套配置
 - 多个 base URL 候选时，兼容“not found / 405”类失败后的替代候选重试
+- scripted provider harness 步骤耗尽时显式失败，不静默生成默认响应
 
 ## 测试与验证
 
 当前主要由以下测试保护：
 
-- `tests/provider-capability.test.ts`
+- `tests/config/provider-capability.test.ts`
+- `tests/config/provider-harness.test.ts`
 - `tests/config/provider-runtime-config.test.ts`
-- `tests/doctor-provider-probe.test.ts`
-- `tests/provider-and-tool-observability.test.ts`
+- `tests/cli/doctor-provider-probe.test.ts`
+- `tests/observability/provider-and-tool-observability.test.ts`
 - `tests/doctor/runtime-doctor.test.ts`
 
 同时，当前仓库已经完成：
@@ -105,4 +111,5 @@ provider 相关正式状态当前归属如下：
 - DeepSeek 官方 V4 不再用旧 `chat/reasoner` 模型名表达思考模式。
 - `.deadmouse/.env` 与统一配置系统是唯一正式运行配置入口。
 - 增加 provider 时，仍沿 capability/profile/adapter 三层结构接入，不回到 provider-specific 特判堆叠。
+- provider 差异必须能被脚本化 harness 捕获成离线回归证据；harness 只提供证据，不成为运行时第二 provider 策略脑。
 
