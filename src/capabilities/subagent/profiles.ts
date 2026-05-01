@@ -2,6 +2,7 @@ import { createAssignmentContract, formatAssignmentContract } from "../../protoc
 import { createCapabilityProfile, type CapabilityProfile, type CapabilityCost } from "../../protocol/capability.js";
 import { formatCloseoutInstruction } from "../../protocol/closeout.js";
 import { createCapabilityPackage, formatCapabilityPackageForLead, type CapabilityPackage } from "../../protocol/package.js";
+import { executionPort } from "../ports.js";
 
 export type SubagentType = "explore" | "plan" | "code";
 
@@ -148,9 +149,52 @@ export function toSubagentCapabilityPackage(profile: SubagentProfile): Capabilit
     adapter: {
       kind: "agent",
       id: `${capabilityProfile.id}.adapter`,
-      description: "Adapts a subagent profile into the generic capability package contract.",
+      description: "Docks a subagent profile into the capability port.",
     },
-    runnerType: "worker",
+    port: executionPort("worker", {
+      runner: {
+        invocation: "Lead calls task with AssignmentContract fields; runtime launches the selected subagent profile.",
+      },
+      permissionBoundary: {
+        world: "Assigned subagent execution lane",
+        autonomy: "Subagent owns its bounded assignment and returns a closeout; Lead owns integration.",
+        read: ["assigned context", "profile-allowed tools"],
+        write: profile.type === "code"
+          ? ["assigned files through profile-allowed write tools", "execution artifacts", "closeout records"]
+          : ["execution artifacts", "closeout records"],
+        forbidden: ["final user closeout ownership", "machine-selected dispatch", "coordination tool escape"],
+      },
+      foregroundOutput: {
+        mode: "inline_events",
+        sink: "runtime-ui",
+        section: "subagent",
+        streams: ["progress", "closeout"],
+      },
+      artifacts: [
+        {
+          kind: "execution",
+          name: "subagent-execution",
+          description: "Execution record for the subagent assignment.",
+          required: true,
+        },
+        {
+          kind: "observation",
+          name: "subagent-evidence",
+          description: "Evidence and result summary returned by the subagent.",
+          required: false,
+        },
+      ],
+      closeout: {
+        required: true,
+        contract: "CloseoutContract",
+        requiredEvidence: ["evidence", "verification when performed", "risks"],
+        mergeProposal: "none",
+      },
+      wake: {
+        required: true,
+        reasons: ["completed", "failed", "aborted", "paused", "budget_exhausted"],
+      },
+    }),
     availability: profile.description,
   });
 }

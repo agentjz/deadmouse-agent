@@ -1,4 +1,4 @@
-import { tryParseJson } from "../../../utils/json.js";
+import { tryParseJson } from "../../utils/json.js";
 import { normalizeDisplayPath } from "../pathDisplay.js";
 import { truncate } from "../previewPolicy.js";
 import { formatLineRange, readStringField } from "./shared.js";

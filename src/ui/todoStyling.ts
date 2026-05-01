@@ -25,9 +25,8 @@ export function colorizeTodoMarkers(text: string): string {
 function colorizeMarker(marker: string): string {
   switch (marker) {
     case "[>]":
-      return chalk.cyan(marker);
+      return chalk.magenta(marker);
     case "[x]":
-      return chalk.green(marker);
     case "[ ]":
       return chalk.gray(marker);
     default:

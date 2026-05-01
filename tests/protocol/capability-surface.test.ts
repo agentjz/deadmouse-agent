@@ -25,7 +25,33 @@ function createPackage(id: string, tools: string[]) {
       id: `${id}.adapter`,
       description: "test adapter",
     },
-    runnerType: "tool",
+    port: {
+      runner: { type: "tool", invocation: "Lead-selected test tool runner." },
+      permissionBoundary: {
+        world: "test tool lane",
+        autonomy: "test tool owns declared operation",
+        read: ["test input"],
+        write: ["test output"],
+        forbidden: ["machine strategy"],
+      },
+      foregroundOutput: {
+        mode: "inline_events",
+        sink: "runtime-ui",
+        section: "tool",
+        streams: ["tool", "result"],
+      },
+      artifacts: [{ kind: "observation", name: "test-result", description: "test result", required: false }],
+      closeout: {
+        required: false,
+        contract: "CloseoutContract",
+        requiredEvidence: [],
+        mergeProposal: "none",
+      },
+      wake: {
+        required: false,
+        reasons: [],
+      },
+    },
   });
 }
 

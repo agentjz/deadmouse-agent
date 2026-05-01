@@ -1,4 +1,5 @@
 import type { AgentCallbacks } from "../agent/types.js";
+import { colorRuntimeUiText } from "../runtime-ui/theme.js";
 import { writeStdout } from "../utils/stdio.js";
 
 const ASCII_BLOCK_FRAMES = ["[■   ]", "[ ■  ]", "[  ■ ]", "[   ■]", "[  ■ ]", "[ ■  ]"] as const;
@@ -32,7 +33,7 @@ export function createWaitingSpinner(options: {
     const frame = `${frames[frameIndex]} ${label}`;
     frameIndex = (frameIndex + 1) % frames.length;
     lastLength = frame.length;
-    write(`\r${frame}`);
+    write(`\r${colorRuntimeUiText("system", frame)}`);
   };
 
   const clear = (): void => {

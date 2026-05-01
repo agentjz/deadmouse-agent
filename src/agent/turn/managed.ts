@@ -73,6 +73,7 @@ export async function runManagedAgentTurn(options: ManagedTurnOptions): Promise<
           cwd: options.cwd,
           objectiveText: session.taskState?.objective,
           abortSignal: options.abortSignal,
+          onForegroundStream: options.callbacks?.onExecutionForegroundStream,
         });
         continue;
       }
@@ -109,6 +110,7 @@ export async function runManagedAgentTurn(options: ManagedTurnOptions): Promise<
         cwd: options.cwd,
         objectiveText: session.taskState?.objective,
         abortSignal: options.abortSignal,
+        onForegroundStream: options.callbacks?.onExecutionForegroundStream,
       });
       nextInput = buildInternalWakeInput(options.identity);
       continue;

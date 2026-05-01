@@ -1,5 +1,6 @@
 import { createCapabilityProfile } from "../../protocol/capability.js";
 import { createCapabilityPackage, type CapabilityPackage } from "../../protocol/package.js";
+import { nonExecutionPort } from "../ports.js";
 import type { LoadedSkill } from "./types.js";
 
 export function listSkillCapabilityPackages(skills: readonly LoadedSkill[]): CapabilityPackage[] {
@@ -35,13 +36,44 @@ export function listSkillCapabilityPackages(skills: readonly LoadedSkill[]): Cap
       adapter: {
         kind: "skill",
         id: `${profile.id}.adapter`,
-        description: "Adapts a discovered skill into the generic capability package contract.",
+        description: "Docks a discovered skill into the capability port.",
       },
-      runnerType: "skill_load",
-      runner: {
-        createsExecution: false,
-        emitsWakeSignal: false,
-      },
+      port: nonExecutionPort("skill_load", {
+        runner: {
+          invocation: "Lead calls load_skill explicitly; runtime exposes the skill body as context evidence.",
+        },
+        permissionBoundary: {
+          world: "Lead context lane",
+          autonomy: "Skill contributes method context only; the active model still owns judgment.",
+          read: [skill.path],
+          write: ["runtime context evidence"],
+          forbidden: ["automatic skill loading", "route-changing machine strategy"],
+        },
+        foregroundOutput: {
+          mode: "silent",
+          sink: "runtime-ui",
+          section: "skill",
+          streams: ["tool"],
+        },
+        artifacts: [
+          {
+            kind: "observation",
+            name: "skill-context",
+            description: "Loaded skill body exposed as runtime evidence.",
+            required: false,
+          },
+        ],
+        closeout: {
+          required: false,
+          contract: "CloseoutContract",
+          requiredEvidence: [],
+          mergeProposal: "none",
+        },
+        wake: {
+          required: false,
+          reasons: [],
+        },
+      }),
       availability: skill.description || `Skill body available through explicit load_skill: ${skill.name}.`,
     });
   });

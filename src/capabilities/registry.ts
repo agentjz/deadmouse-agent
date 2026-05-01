@@ -1,4 +1,5 @@
 import { getBackgroundCapabilityPackage } from "./background/capabilityAdapter.js";
+import { getDreamingCapabilityPackage } from "./dreaming/capabilityAdapter.js";
 import { listMcpCapabilityPackages } from "./mcp/capabilityAdapter.js";
 import { listSkillCapabilityPackages } from "./skills/capabilityAdapter.js";
 import type { LoadedSkill } from "./skills/types.js";
@@ -27,6 +28,7 @@ export function listRuntimeCapabilityPackageProviders(
     { listCapabilityPackages: listSubagentCapabilityPackages },
     { listCapabilityPackages: () => [getTeamCapabilityPackage()] },
     { listCapabilityPackages: listWorkflowCapabilityPackages },
+    { listCapabilityPackages: () => [getDreamingCapabilityPackage()] },
     { listCapabilityPackages: () => [getBackgroundCapabilityPackage()] },
     { listCapabilityPackages: () => input.mcpConfig ? listMcpCapabilityPackages(input.mcpConfig) : [] },
     { listCapabilityPackages: () => listSkillCapabilityPackages(input.skills ?? []) },

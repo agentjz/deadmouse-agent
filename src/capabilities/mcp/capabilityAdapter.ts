@@ -1,5 +1,6 @@
 import { createCapabilityProfile } from "../../protocol/capability.js";
 import { createCapabilityPackage, type CapabilityPackage } from "../../protocol/package.js";
+import { nonExecutionPort } from "../ports.js";
 import { resolveMcpServerDefinitions } from "./config.js";
 import type { McpConfig, ResolvedMcpServerDefinition } from "./types.js";
 
@@ -45,11 +46,42 @@ function toMcpCapabilityPackage(server: ResolvedMcpServerDefinition): Capability
       id: `mcp.${server.name}.adapter`,
       description: "Adapts configured MCP servers into capability packages without discovering or selecting tools.",
     },
-    runnerType: "mcp",
-    runner: {
-      createsExecution: false,
-      emitsWakeSignal: false,
-    },
+    port: nonExecutionPort("mcp", {
+      runner: {
+        invocation: "Lead calls an MCP-backed tool; runtime routes it through the configured MCP server.",
+      },
+      permissionBoundary: {
+        world: "MCP server lane",
+        autonomy: "MCP server owns its exposed tool behavior; protocol governs docking and evidence.",
+        read: ["configured MCP server", "MCP tool arguments"],
+        write: ["MCP tool result evidence"],
+        forbidden: ["automatic startup as strategy", "machine-selected MCP use", "bypassing AssignmentContract"],
+      },
+      foregroundOutput: {
+        mode: "inline_events",
+        sink: "runtime-ui",
+        section: "tool",
+        streams: ["tool", "result"],
+      },
+      artifacts: [
+        {
+          kind: "observation",
+          name: "mcp-result",
+          description: "Result returned by the MCP-backed tool.",
+          required: false,
+        },
+      ],
+      closeout: {
+        required: false,
+        contract: "CloseoutContract",
+        requiredEvidence: [],
+        mergeProposal: "none",
+      },
+      wake: {
+        required: false,
+        reasons: [],
+      },
+    }),
     availability: `${server.name} MCP server surface with startup/runtime cost recorded in capability metadata.`,
   });
 }

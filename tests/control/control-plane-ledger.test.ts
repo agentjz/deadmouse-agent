@@ -12,16 +12,7 @@ import { TaskStore } from "../../src/tasks/store.js";
 import { WorktreeStore } from "../../src/worktrees/store.js";
 import { createTempWorkspace, initGitRepo } from "../helpers.js";
 
-const RETIRED_TRUTH_SOURCE_PATHS = [
-  path.join(".deadmouse", "tasks"),
-  path.join(".deadmouse", "team", "config.json"),
-  path.join(".deadmouse", "team", "policy.json"),
-  path.join(".deadmouse", "team", "requests"),
-  path.join(".deadmouse", "team", "background"),
-  path.join(".deadmouse", "worktrees", "index.json"),
-];
-
-test("control-plane stores bootstrap a sqlite ledger and remove retired JSON truth files", async (t) => {
+test("control-plane stores bootstrap a sqlite ledger as the only control-plane truth source", async (t) => {
   const root = await createTempWorkspace("ledger-bootstrap", t);
   await initGitRepo(root);
 
@@ -127,9 +118,6 @@ test("control-plane stores bootstrap a sqlite ledger and remove retired JSON tru
 
   const ledgerFile = path.join(root, ".deadmouse", "control-plane.sqlite");
   assert.equal(await pathExists(ledgerFile), true);
-  for (const relativePath of RETIRED_TRUTH_SOURCE_PATHS) {
-    assert.equal(await pathExists(path.join(root, relativePath)), false, `${relativePath} should be retired`);
-  }
 
   const reloadedTask = await new TaskStore(root).load(claimed.id);
   assert.equal(reloadedTask.owner, "alpha");
@@ -197,60 +185,6 @@ test("TaskStore arbitrates concurrent claims so only one actor can successfully 
   assert.equal(finalTask.status, "in_progress");
 });
 
-test("control-plane stores remove retired JSON shadows and keep ledger-backed state", async (t) => {
-  const root = await createTempWorkspace("ledger-shadow", t);
-  await initGitRepo(root);
-
-  const task = await new TaskStore(root).create("real task");
-  await new TeamStore(root).upsertMember("alpha", "implementer", "idle", {
-    sessionId: "session-real",
-    pid: 1001,
-  });
-  const realRequest = await new ProtocolRequestStore(root).create({
-    kind: "plan_approval",
-    from: "alpha",
-    to: "lead",
-    subject: "Real request",
-    content: "real",
-  });
-  const realJob = await new BackgroundJobStore(root).create({
-    command: "npm test",
-    cwd: root,
-    requestedBy: "lead",
-    timeoutMs: 30_000,
-  });
-  const realWorktree = await new WorktreeStore(root).create("shadow-proof", task.id);
-
-  await writeRetiredTruthSourceShadows(root);
-
-  const [tasks, teammates, requests, jobs, worktrees] = await Promise.all([
-    new TaskStore(root).list(),
-    new TeamStore(root).listMembers(),
-    new ProtocolRequestStore(root).list(),
-    new BackgroundJobStore(root).list(),
-    new WorktreeStore(root).list(),
-  ]);
-
-  assert.deepEqual(tasks.map((record) => record.id), [task.id]);
-  assert.equal(teammates.some((member) => member.name === "shadow-worker"), false);
-  assert.equal(teammates.some((member) => member.name === "alpha"), true);
-  assert.equal(requests.some((request) => request.id === "shadow-request"), false);
-  assert.equal(requests.some((request) => request.id === realRequest.id), true);
-  assert.equal(jobs.some((job) => job.id === "shadowjob"), false);
-  assert.equal(jobs.some((job) => job.id === realJob.id), true);
-  assert.equal(worktrees.some((worktree) => worktree.name === "shadow-lane"), false);
-  assert.equal(worktrees.some((worktree) => worktree.name === realWorktree.name), true);
-
-  const reloadedTask = await new TaskStore(root).load(task.id);
-  const reloadedWorktree = await new WorktreeStore(root).get(realWorktree.name);
-  assert.equal(reloadedTask.worktree, realWorktree.name);
-  assert.equal(reloadedWorktree.taskId, task.id);
-
-  for (const relativePath of RETIRED_TRUTH_SOURCE_PATHS) {
-    assert.equal(await pathExists(path.join(root, relativePath)), false, `${relativePath} should be cleaned`);
-  }
-});
-
 test("control-plane stores fail closed when the teammate ledger is corrupt", async (t) => {
   const root = await createTempWorkspace("ledger-corrupt-team-members", t);
   await new TeamStore(root).upsertMember("worker-1", "implementer", "idle", {
@@ -266,121 +200,6 @@ test("control-plane stores fail closed when the teammate ledger is corrupt", asy
     /team_members/i,
   );
 });
-
-async function writeRetiredTruthSourceShadows(root: string): Promise<void> {
-  const deadmouseDir = path.join(root, ".deadmouse");
-  const tasksDir = path.join(deadmouseDir, "tasks");
-  const teamDir = path.join(deadmouseDir, "team");
-  const requestsDir = path.join(teamDir, "requests");
-  const backgroundDir = path.join(teamDir, "background");
-  const worktreesDir = path.join(deadmouseDir, "worktrees");
-
-  await fs.mkdir(tasksDir, { recursive: true });
-  await fs.mkdir(requestsDir, { recursive: true });
-  await fs.mkdir(backgroundDir, { recursive: true });
-  await fs.mkdir(worktreesDir, { recursive: true });
-
-  await fs.writeFile(
-    path.join(tasksDir, "task_999.json"),
-    JSON.stringify({
-      id: 999,
-      subject: "shadow task",
-      description: "shadow",
-      status: "pending",
-      blockedBy: [],
-      blocks: [],
-      assignee: "",
-      owner: "",
-      worktree: "",
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    }, null, 2),
-    "utf8",
-  );
-  await fs.writeFile(
-    path.join(teamDir, "config.json"),
-    JSON.stringify({
-      teamName: "shadow-team",
-      members: [
-        {
-          name: "shadow-worker",
-          role: "implementer",
-          status: "working",
-          pid: 9999,
-          sessionId: "shadow-session",
-          createdAt: "2026-01-01T00:00:00.000Z",
-          updatedAt: "2026-01-01T00:00:00.000Z",
-        },
-      ],
-    }, null, 2),
-    "utf8",
-  );
-  await fs.writeFile(
-    path.join(teamDir, "policy.json"),
-    JSON.stringify({
-      allowPlanDecisions: false,
-      allowShutdownRequests: false,
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    }, null, 2),
-    "utf8",
-  );
-  await fs.writeFile(
-    path.join(requestsDir, "request_shadow-request.json"),
-    JSON.stringify({
-      id: "shadow-request",
-      kind: "plan_approval",
-      from: "shadow-worker",
-      to: "lead",
-      subject: "shadow",
-      content: "shadow",
-      status: "approved",
-      decision: {
-        approve: true,
-        feedback: "shadow",
-        respondedBy: "lead",
-        respondedAt: "2026-01-01T00:00:00.000Z",
-      },
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    }, null, 2),
-    "utf8",
-  );
-  await fs.writeFile(
-    path.join(backgroundDir, "job_shadowjob.json"),
-    JSON.stringify({
-      id: "shadowjob",
-      command: "shadow command",
-      cwd: root,
-      requestedBy: "lead",
-      status: "completed",
-      timeoutMs: 30_000,
-      stallTimeoutMs: 30_000,
-      exitCode: 0,
-      output: "shadow",
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-      finishedAt: "2026-01-01T00:00:00.000Z",
-    }, null, 2),
-    "utf8",
-  );
-  await fs.writeFile(
-    path.join(worktreesDir, "index.json"),
-    JSON.stringify({
-      items: [
-        {
-          name: "shadow-lane",
-          path: path.join(worktreesDir, "shadow-lane"),
-          branch: "wt/shadow-lane",
-          status: "active",
-          taskId: 999,
-          createdAt: "2026-01-01T00:00:00.000Z",
-          updatedAt: "2026-01-01T00:00:00.000Z",
-        },
-      ],
-    }, null, 2),
-    "utf8",
-  );
-}
 
 async function pathExists(targetPath: string): Promise<boolean> {
   try {

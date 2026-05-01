@@ -36,7 +36,7 @@ export function parseSkillSource(
   const body = (match?.[2] ?? normalized).trim();
   const metadata = parseSimpleFrontmatter(frontmatter);
   const hasFrontmatter = frontmatter.trim().length > 0;
-  rejectObsoleteSkillMetadata(metadata, options.absolutePath);
+  rejectRemovedSkillMetadata(metadata, options.absolutePath);
   const name = readSkillName(metadata, options.absolutePath, hasFrontmatter, options.rootDir);
   const description = readSkillDescription(metadata, body, options.absolutePath);
   const schemaVersion = readSchemaVersion(metadata, options.absolutePath);
@@ -67,11 +67,11 @@ export function parseSkillSource(
   };
 }
 
-function rejectObsoleteSkillMetadata(metadata: Record<string, string>, absolutePath: string): void {
+function rejectRemovedSkillMetadata(metadata: Record<string, string>, absolutePath: string): void {
   for (const field of ["load_mode", "required"]) {
     if (metadata[field] !== undefined) {
       throw new SkillSchemaError(
-        `Skill metadata field "${field}" is obsolete. Skills are indexed and loaded only through explicit load_skill calls.`,
+        `Skill metadata field "${field}" has been removed. Skills are indexed and loaded only through explicit load_skill calls.`,
         absolutePath,
       );
     }

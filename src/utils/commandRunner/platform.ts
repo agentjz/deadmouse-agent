@@ -12,7 +12,7 @@ export function normalizeCommandForPlatform(command: string): string {
   }
 
   const normalized = normalizeWindowsCommand(trimmed);
-  return normalizeNpmShims(normalized);
+  return normalizeNpmCommandNames(normalized);
 }
 
 function normalizeWindowsCommand(command: string): string {
@@ -25,8 +25,8 @@ function normalizeWindowsCommand(command: string): string {
   return joinWithAndSemantics(normalizedSegments);
 }
 
-function normalizeNpmShims(command: string): string {
-  const shims: Record<string, string> = {
+function normalizeNpmCommandNames(command: string): string {
+  const commandNames: Record<string, string> = {
     npm: "npm.cmd",
     npx: "npx.cmd",
     pnpm: "pnpm.cmd",
@@ -35,7 +35,7 @@ function normalizeNpmShims(command: string): string {
 
   const pattern = /(^|[;&|]|\&\&)\s*(npm|npx|pnpm|yarn)(?=\s|$)/gi;
   return command.replace(pattern, (match, prefix, tool) => {
-    const replacement = shims[String(tool).toLowerCase()];
+    const replacement = commandNames[String(tool).toLowerCase()];
     if (!replacement) {
       return match;
     }

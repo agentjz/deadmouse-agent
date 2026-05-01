@@ -1,5 +1,3 @@
-import { ui } from "../../utils/console.js";
-
 export type TerminalVerbosity = "minimal" | "normal" | "verbose";
 
 const VISIBLE_RESULT_PREVIEW_MAX_CHARS = 180;
@@ -51,15 +49,3 @@ export function normalizeTerminalVerbosity(
   }
 }
 
-export function emitPreview(
-  label: "content" | "preview",
-  preview: string,
-  verbosity: TerminalVerbosity,
-): void {
-  if (verbosity === "minimal") {
-    ui.plain(preview);
-    return;
-  }
-
-  ui.plain(`[${label}]\n${preview}`);
-}

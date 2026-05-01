@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { hasActiveLeadWaitExecutions } from "../../src/execution/leadWait.js";
+import { hasActiveLeadWaitExecutions, waitForLeadWaitExecutionsToSettle } from "../../src/execution/leadWait.js";
 import { ExecutionStore } from "../../src/execution/store.js";
-import type { ExecutionRecord } from "../../src/execution/types.js";
 import { createTempWorkspace } from "../helpers.js";
 
 test("lead wait is driven by execution wait policy snapshots, not profile names", async (t) => {
@@ -78,27 +77,52 @@ test("execution wait policy survives ledger round trips as an audit snapshot", a
   assert.deepEqual(loaded.waitPolicy, execution.waitPolicy);
 });
 
-test("legacy execution records default to blocking Lead only when created by Lead and wake-backed", () => {
-  const legacy = {
-    id: "legacy",
+test("lead wait announces active Dreaming foreground stream before suspending", async (t) => {
+  const root = await createTempWorkspace("lead-wait-dreaming-foreground", t);
+  const store = new ExecutionStore(root);
+  const execution = await store.create({
     lane: "agent",
-    profile: "workflow",
+    profile: "dreaming",
     launch: "worker",
     requestedBy: "lead",
-    actorName: "workflow",
-    cwd: process.cwd(),
-    status: "running",
+    actorName: "Dreaming",
+    cwd: root,
     worktreePolicy: "none",
-    boundary: {
-      protocol: "deadmouse.execution-boundary",
-      returnTo: "lead",
-      onBoundary: "return_to_lead_review",
-      maxRuntimeMs: 900_000,
-      maxIdleMs: 180_000,
+    waitPolicy: {
+      lead: "while_execution_active",
+      wake: "required",
+      scope: "global",
+      terminalStatuses: ["completed", "failed", "aborted", "paused"],
     },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  } as ExecutionRecord;
+  });
+  await store.start(execution.id, { pid: process.pid });
+  const seen: Array<{ executionId: string; label: string; streamPath: string }> = [];
 
-  assert.equal(legacy.waitPolicy, undefined);
+  const waiting = waitForLeadWaitExecutionsToSettle({
+    cwd: root,
+    onForegroundStream(event) {
+      seen.push(event);
+    },
+  });
+  await waitFor(() => seen.length > 0);
+  await store.close(execution.id, {
+    status: "completed",
+    summary: "done",
+  });
+  await waiting;
+
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0]?.executionId, execution.id);
+  assert.equal(seen[0]?.label, "dreaming");
+  assert.match(seen[0]?.streamPath ?? "", /execution-streams/);
 });
+
+async function waitFor(predicate: () => boolean): Promise<void> {
+  const started = Date.now();
+  while (!predicate()) {
+    if (Date.now() - started > 3_000) {
+      throw new Error("Timed out waiting for condition.");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+}

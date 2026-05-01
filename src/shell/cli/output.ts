@@ -12,7 +12,6 @@ export function createCliOutputPort(): ShellOutputPort {
     error: ui.error,
     dim: ui.dim,
     heading: ui.heading,
-    tool: ui.tool,
     interrupt(message) {
       const now = Date.now();
       if (now - lastInterruptAt < 150) {

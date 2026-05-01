@@ -7,7 +7,7 @@ import type {
   SessionRecord,
   VerificationState,
 } from "../types.js";
-import { createStreamRenderer } from "../ui/streamRenderer.js";
+import { createRuntimeUiAgentCallbacks } from "../runtime-ui/agentCallbacks.js";
 import { ui } from "../utils/console.js";
 
 export interface OneShotCloseoutReport {
@@ -40,7 +40,9 @@ export async function runOneShotPrompt(
   session: SessionRecord,
   sessionStore: SessionStore,
 ): Promise<OneShotPromptRunResult> {
-  const streamRenderer = createStreamRenderer(config, {
+  const runtimeUi = createRuntimeUiAgentCallbacks({
+    channel: "lead",
+    config,
     cwd,
     assistantLeadingBlankLine: false,
     assistantTrailingNewlines: "\n",
@@ -55,11 +57,11 @@ export async function runOneShotPrompt(
     config,
     session,
     sessionStore,
-    callbacks: streamRenderer.callbacks,
+    callbacks: runtimeUi.callbacks,
   });
 
   if (outcome.status === "failed" || outcome.status === "aborted") {
-    streamRenderer.flush();
+    runtimeUi.flush();
   }
 
   if (outcome.status === "paused" && outcome.pauseReason) {

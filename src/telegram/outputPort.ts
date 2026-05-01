@@ -36,10 +36,6 @@ export class TelegramOutputPort implements ShellOutputPort {
     this.queue(text);
   }
 
-  tool(text: string): void {
-    this.queue(`Tool: ${text}`);
-  }
-
   interrupt(text: string): void {
     this.queue(`Interrupt: ${text}`);
   }

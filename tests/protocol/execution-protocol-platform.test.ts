@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
@@ -60,7 +60,33 @@ test("protocol platform keeps capability, assignment, and closeout as generic co
       id: "generic-workflow.adapter",
       description: "test adapter",
     },
-    runnerType: "workflow",
+    port: {
+      runner: { type: "workflow", invocation: "Lead-selected workflow test runner." },
+      permissionBoundary: {
+        world: "test workflow lane",
+        autonomy: "test workflow owns internal method",
+        read: ["test input"],
+        write: ["test artifact"],
+        forbidden: ["machine strategy"],
+      },
+      foregroundOutput: {
+        mode: "inline_events",
+        sink: "runtime-ui",
+        section: "workflow",
+        streams: ["progress", "closeout"],
+      },
+      artifacts: [{ kind: "execution", name: "test-execution", description: "test execution", required: true }],
+      closeout: {
+        required: true,
+        contract: "CloseoutContract",
+        requiredEvidence: ["test evidence"],
+        mergeProposal: "none",
+      },
+      wake: {
+        required: true,
+        reasons: ["completed", "failed"],
+      },
+    },
   });
   const assignment = createAssignmentContract({
     capabilityId: pkg.packageId,
@@ -106,13 +132,39 @@ test("capability registry explains availability without creating machine intent"
           id: "team.adapter",
           description: "test adapter",
         },
-        runnerType: "worker",
+        port: {
+          runner: { type: "worker", invocation: "Lead-selected worker test runner." },
+          permissionBoundary: {
+            world: "test worker lane",
+            autonomy: "test worker owns assignment",
+            read: ["test input"],
+            write: ["test artifact"],
+            forbidden: ["machine strategy"],
+          },
+          foregroundOutput: {
+            mode: "inline_events",
+            sink: "runtime-ui",
+            section: "team",
+            streams: ["progress", "closeout"],
+          },
+          artifacts: [{ kind: "execution", name: "test-execution", description: "test execution", required: true }],
+          closeout: {
+            required: true,
+            contract: "CloseoutContract",
+            requiredEvidence: ["test evidence"],
+            mergeProposal: "none",
+          },
+          wake: {
+            required: true,
+            reasons: ["completed", "failed"],
+          },
+        },
       })],
     },
   ]);
 
   assert.match(registry, /Presentation order and summaries are options for Lead, not machine intent/);
-  assert.match(registry, /AssignmentContract/);
+  assert.match(registry, /deadmouse\.capability-port/);
   assert.match(registry, /CloseoutContract/);
 });
 
@@ -135,7 +187,33 @@ test("capability packages freeze machine permissions away from strategy decision
       id: "external.codex.adapter",
       description: "External adapter.",
     },
-    runnerType: "external_cli",
+    port: {
+      runner: { type: "external_cli", invocation: "Lead-selected external CLI runner." },
+      permissionBoundary: {
+        world: "external test lane",
+        autonomy: "external agent owns internal loop",
+        read: ["test input"],
+        write: ["test artifacts"],
+        forbidden: ["machine strategy"],
+      },
+      foregroundOutput: {
+        mode: "foreground_stream",
+        sink: "runtime-ui",
+        section: "external",
+        streams: ["stdout", "stderr", "closeout"],
+      },
+      artifacts: [{ kind: "execution", name: "test-execution", description: "test execution", required: true }],
+      closeout: {
+        required: true,
+        contract: "CloseoutContract",
+        requiredEvidence: ["test evidence"],
+        mergeProposal: "optional",
+      },
+      wake: {
+        required: true,
+        reasons: ["completed", "failed"],
+      },
+    },
   });
 
   assert.equal(pkg.machinePermissions.exposeToLead, true);
@@ -143,8 +221,10 @@ test("capability packages freeze machine permissions away from strategy decision
   assert.equal(pkg.machinePermissions.autoSelect, false);
   assert.equal(pkg.machinePermissions.autoDispatch, false);
   assert.equal(pkg.machinePermissions.decideStrategy, false);
-  assert.equal(pkg.contracts.input, "AssignmentContract");
-  assert.equal(pkg.contracts.output, "CloseoutContract");
+  assert.equal(pkg.port.protocol, "deadmouse.capability-port");
+  assert.equal(pkg.port.autonomyOwner, "ecosystem");
+  assert.equal(pkg.port.foregroundOutput.sink, "runtime-ui");
+  assert.equal(pkg.port.closeout.contract, "CloseoutContract");
   assert.equal(pkg.runner.leadWaitPolicy.lead, "while_execution_active");
 });
 
@@ -227,8 +307,19 @@ test("source adapters register built-in and external surfaces as capability pack
   assert.equal(registry.resolve("team.teammate").runner.leadWaitPolicy.lead, "while_execution_active");
   assert.equal(registry.resolve("background.command").runner.leadWaitPolicy.lead, "while_execution_active");
   assert.equal(registry.resolve("workflow.manual-lead-selected").runner.leadWaitPolicy.lead, "while_execution_active");
+  assert.equal(registry.resolve("workflow.dreaming-loop").source.path, "src/capabilities/workflows/dreamingLoop.ts");
   assert.equal(registry.resolve("skill.research").runner.leadWaitPolicy.lead, "none");
   assert.equal(registry.resolve("mcp.planner").runner.leadWaitPolicy.lead, "none");
+});
+
+test("generic workflow registry does not contain Dreaming Loop concrete profile definition", () => {
+  const registrySource = fs.readFileSync(path.join(process.cwd(), "src", "capabilities", "workflows", "registry.ts"), "utf8");
+  const dreamingLoopSource = fs.readFileSync(path.join(process.cwd(), "src", "capabilities", "workflows", "dreamingLoop.ts"), "utf8");
+
+  assert.doesNotMatch(registrySource, /DREAMING_LOOP_WORKFLOW_PROFILE/);
+  assert.doesNotMatch(registrySource, /Dreaming Loop owns round bookkeeping/);
+  assert.match(dreamingLoopSource, /DREAMING_LOOP_WORKFLOW_PROFILE/);
+  assert.match(dreamingLoopSource, /Dreaming Loop owns round bookkeeping/);
 });
 
 test("capability registry fails closed on duplicate packages and static adapters only expose packages", () => {
@@ -264,18 +355,45 @@ test("external ecosystem manifests normalize into packages without changing prot
       id: "codex-cli.adapter",
       description: "Manifest adapter.",
     },
-    runnerType: "external_cli",
-    leadWaitPolicy: {
-      lead: "while_execution_active",
-      wake: "required",
-      scope: "global",
-      terminalStatuses: ["completed", "failed", "aborted", "paused"],
+    port: {
+      runner: {
+        type: "external_cli",
+        invocation: "Lead-selected external CLI manifest runner.",
+        leadWaitPolicy: {
+          lead: "while_execution_active",
+          wake: "required",
+          scope: "global",
+          terminalStatuses: ["completed", "failed", "aborted", "paused"],
+        },
+      },
+      permissionBoundary: {
+        world: "external CLI lane",
+        autonomy: "external agent owns its internal loop",
+        read: ["assigned context"],
+        write: ["external artifacts"],
+        forbidden: ["machine strategy"],
+      },
+      foregroundOutput: {
+        mode: "foreground_stream",
+        sink: "runtime-ui",
+        section: "external",
+        streams: ["stdout", "stderr", "closeout"],
+      },
+      artifacts: [{ kind: "execution", name: "external-execution", description: "external execution" }],
+      closeout: {
+        required: true,
+        contract: "CloseoutContract",
+        requiredEvidence: ["external evidence"],
+        mergeProposal: "optional",
+      },
+      wake: {
+        required: true,
+        reasons: ["completed", "failed", "aborted", "paused"],
+      },
     },
     inputSchema: "AssignmentContract plus external CLI args",
     outputSchema: "CloseoutContract plus ArtifactRef",
     budgetPolicy: "Lead chooses when external CLI runtime is worth the cost.",
-    artifactPolicy: "Record external CLI output as ArtifactRef.",
-    closeoutPolicy: "External agent must hand back CloseoutContract.",
     availability: "External CLI agent surface.",
     bestFor: ["external agent execution"],
     notFor: ["machine-selected delegation"],
@@ -295,7 +413,33 @@ test("external ecosystem manifests normalize into packages without changing prot
       id: "plugin.demo.adapter",
       description: "Plugin adapter.",
     },
-    runnerType: "manual",
+    port: {
+      runner: { type: "manual", invocation: "Lead-selected manual plugin runner." },
+      permissionBoundary: {
+        world: "plugin lane",
+        autonomy: "plugin owns declared behavior",
+        read: ["assigned context"],
+        write: ["plugin artifacts"],
+        forbidden: ["machine strategy"],
+      },
+      foregroundOutput: {
+        mode: "inline_events",
+        sink: "runtime-ui",
+        section: "plugin",
+        streams: ["progress", "closeout"],
+      },
+      artifacts: [{ kind: "observation", name: "plugin-evidence", description: "plugin evidence" }],
+      closeout: {
+        required: true,
+        contract: "CloseoutContract",
+        requiredEvidence: ["plugin evidence"],
+        mergeProposal: "none",
+      },
+      wake: {
+        required: true,
+        reasons: ["completed", "failed"],
+      },
+    },
   });
 
   const registry = new CapabilityRegistry(createCapabilityPackagesFromManifests([
@@ -313,7 +457,33 @@ test("external ecosystem manifests normalize into packages without changing prot
         id: "another-agent.adapter",
         description: "Adapter.",
       },
-      runnerType: "external_cli",
+      port: {
+        runner: { type: "external_cli", invocation: "Lead-selected second external agent runner." },
+        permissionBoundary: {
+          world: "external agent lane",
+          autonomy: "external agent owns internal loop",
+          read: ["assigned context"],
+          write: ["external artifacts"],
+          forbidden: ["machine strategy"],
+        },
+        foregroundOutput: {
+          mode: "foreground_stream",
+          sink: "runtime-ui",
+          section: "external",
+          streams: ["stdout", "stderr", "closeout"],
+        },
+        artifacts: [{ kind: "execution", name: "external-execution", description: "external execution" }],
+        closeout: {
+          required: true,
+          contract: "CloseoutContract",
+          requiredEvidence: ["external evidence"],
+          mergeProposal: "optional",
+        },
+        wake: {
+          required: true,
+          reasons: ["completed", "failed", "aborted", "paused"],
+        },
+      },
     },
   ]));
 
@@ -323,7 +493,7 @@ test("external ecosystem manifests normalize into packages without changing prot
   assert.equal(externalAgent.runner.leadWaitPolicy.scope, "global");
   assert.equal(externalAgent.machinePermissions.autoSelect, false);
   assert.equal(plugin.packageId, "plugin.demo");
-  assert.equal(registry.resolve("external_agent.another-agent").runner.runnerType, "external_cli");
+  assert.equal(registry.resolve("external_agent.another-agent").runner.type, "external_cli");
 });
 
 test("external manifest bundles become registry adapters without custom core wiring", () => {
@@ -349,7 +519,33 @@ test("external manifest bundles become registry adapters without custom core wir
           id: "plugin.audit.skill.adapter",
           description: "Skill adapter.",
         },
-        runnerType: "skill_load",
+        port: {
+          runner: { type: "skill_load", invocation: "Lead-selected skill load runner.", createsExecution: false, emitsWakeSignal: false },
+          permissionBoundary: {
+            world: "skill context lane",
+            autonomy: "skill contributes context only",
+            read: ["plugins/audit/SKILL.md"],
+            write: ["runtime context evidence"],
+            forbidden: ["machine strategy"],
+          },
+          foregroundOutput: {
+            mode: "silent",
+            sink: "runtime-ui",
+            section: "skill",
+            streams: ["tool"],
+          },
+          artifacts: [{ kind: "observation", name: "skill-context", description: "skill context" }],
+          closeout: {
+            required: false,
+            contract: "CloseoutContract",
+            requiredEvidence: [],
+            mergeProposal: "none",
+          },
+          wake: {
+            required: false,
+            reasons: [],
+          },
+        },
         bestFor: ["Lead-selected audit method"],
         notFor: ["automatic audit"],
       },
@@ -367,7 +563,33 @@ test("external manifest bundles become registry adapters without custom core wir
           id: "plugin.hephaestus.adapter",
           description: "External agent adapter.",
         },
-        runnerType: "external_cli",
+        port: {
+          runner: { type: "external_cli", invocation: "Lead-selected bundled external agent runner." },
+          permissionBoundary: {
+            world: "external agent lane",
+            autonomy: "external agent owns internal loop",
+            read: ["assigned context"],
+            write: ["external artifacts"],
+            forbidden: ["machine strategy"],
+          },
+          foregroundOutput: {
+            mode: "foreground_stream",
+            sink: "runtime-ui",
+            section: "external",
+            streams: ["stdout", "stderr", "closeout"],
+          },
+          artifacts: [{ kind: "execution", name: "external-execution", description: "external execution" }],
+          closeout: {
+            required: true,
+            contract: "CloseoutContract",
+            requiredEvidence: ["external evidence"],
+            mergeProposal: "optional",
+          },
+          wake: {
+            required: true,
+            reasons: ["completed", "failed", "aborted", "paused"],
+          },
+        },
       },
     ],
   });
@@ -376,7 +598,7 @@ test("external manifest bundles become registry adapters without custom core wir
   const summary = registry.summarizeForLead();
 
   assert.deepEqual(adapter.adapts, ["skill", "external_agent"]);
-  assert.equal(registry.resolve("skill.audit-skill").runner.runnerType, "skill_load");
+  assert.equal(registry.resolve("skill.audit-skill").runner.type, "skill_load");
   assert.equal(registry.resolve("external_agent.hephaestus").source.kind, "plugin");
   assert.match(summary, /Presentation order and summaries are options for Lead, not machine intent/);
   assert.doesNotMatch(summary, /automatic audit/);
@@ -503,7 +725,7 @@ test("protocol core does not import concrete capability implementations", () => 
   }
 });
 
-test("retired registry surfaces are swept out of source", () => {
+test("removed registry surfaces stay absent from source", () => {
   const sourceFiles = collectSourceFiles(path.join(process.cwd(), "src"));
   const forbidden = [
     ["format", "Capability", "Profile"].join(""),

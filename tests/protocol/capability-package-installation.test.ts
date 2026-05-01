@@ -31,7 +31,32 @@ test("manifest capability packages are installable discoverable disableable and 
         id: "workflow.analysis.adapter",
         description: "Installed manifest adapter",
       },
-      runnerType: "workflow",
+      port: {
+        runner: { type: "workflow", invocation: "Lead-selected installed workflow runner." },
+        permissionBoundary: {
+          world: "installed workflow lane",
+          autonomy: "installed workflow owns internal method",
+          read: ["assigned context"],
+          write: ["workflow artifacts"],
+          forbidden: ["machine strategy"],
+        },
+        foregroundOutput: {
+          mode: "inline_events",
+          sink: "runtime-ui",
+          section: "workflow",
+          streams: ["progress", "closeout"],
+        },
+        artifacts: [{ kind: "execution", name: "workflow-execution", description: "workflow execution" }],
+        closeout: {
+          required: true,
+          requiredEvidence: ["workflow evidence"],
+          mergeProposal: "none",
+        },
+        wake: {
+          required: true,
+          reasons: ["completed", "failed"],
+        },
+      },
       governance: {
         enabled: true,
         installed: true,
@@ -53,7 +78,32 @@ test("manifest capability packages are installable discoverable disableable and 
       description: "Disabled workflow",
       source: { kind: "workflow", builtIn: false },
       adapter: { kind: "workflow", id: "workflow.disabled.adapter", description: "adapter" },
-      runnerType: "workflow",
+      port: {
+        runner: { type: "workflow", invocation: "Lead-selected disabled workflow runner." },
+        permissionBoundary: {
+          world: "disabled workflow lane",
+          autonomy: "disabled workflow owns internal method",
+          read: ["assigned context"],
+          write: ["workflow artifacts"],
+          forbidden: ["machine strategy"],
+        },
+        foregroundOutput: {
+          mode: "inline_events",
+          sink: "runtime-ui",
+          section: "workflow",
+          streams: ["progress", "closeout"],
+        },
+        artifacts: [{ kind: "execution", name: "workflow-execution", description: "workflow execution" }],
+        closeout: {
+          required: true,
+          requiredEvidence: ["workflow evidence"],
+          mergeProposal: "none",
+        },
+        wake: {
+          required: true,
+          reasons: ["completed", "failed"],
+        },
+      },
       governance: {
         enabled: false,
         installed: true,

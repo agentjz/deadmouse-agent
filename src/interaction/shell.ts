@@ -23,7 +23,6 @@ export interface ShellOutputPort {
   error(text: string): void;
   dim(text: string): void;
   heading(text: string): void;
-  tool(text: string): void;
   interrupt(text: string): void;
 }
 

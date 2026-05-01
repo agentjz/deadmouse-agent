@@ -1,5 +1,6 @@
 import { createCapabilityProfile } from "../../../protocol/capability.js";
 import { createCapabilityPackage, type CapabilityPackage } from "../../../protocol/package.js";
+import { nonExecutionPort } from "../../ports.js";
 import type { ToolGovernanceSpecialty, ToolRegistryEntry, ToolOriginKind } from "./types.js";
 
 export function listToolCapabilityPackages(entries: readonly ToolRegistryEntry[] = []): CapabilityPackage[] {
@@ -33,11 +34,44 @@ export function listToolCapabilityPackages(entries: readonly ToolRegistryEntry[]
         id: `${profile.id}.adapter`,
         description: "Adapts runtime tool registry entries into capability package groups.",
       },
-      runnerType: group.sourceKind === "mcp" ? "mcp" : "tool",
-      runner: {
-        createsExecution: false,
-        emitsWakeSignal: false,
-      },
+      port: nonExecutionPort(group.sourceKind === "mcp" ? "mcp" : "tool", {
+        runner: {
+          invocation: "Lead emits an explicit tool call; runtime validates and executes it through tool governance.",
+        },
+        permissionBoundary: {
+          world: "Tool execution lane",
+          autonomy: "Tool owns only its declared operation; model judgment remains outside the tool.",
+          read: [`${group.specialty} ${group.mutation} tool inputs`],
+          write: group.mutation === "read" || group.mutation === "none"
+            ? ["tool result evidence"]
+            : ["declared tool mutation target", "tool result evidence"],
+          forbidden: ["automatic route changes", "bypassing tool governance", "machine-owned strategy"],
+        },
+        foregroundOutput: {
+          mode: "inline_events",
+          sink: "runtime-ui",
+          section: "tool",
+          streams: ["tool", "result"],
+        },
+        artifacts: [
+          {
+            kind: "observation",
+            name: "tool-result",
+            description: "Tool execution result and optional persisted evidence.",
+            required: false,
+          },
+        ],
+        closeout: {
+          required: false,
+          contract: "CloseoutContract",
+          requiredEvidence: [],
+          mergeProposal: "none",
+        },
+        wake: {
+          required: false,
+          reasons: [],
+        },
+      }),
       availability: `${group.specialty} ${group.mutation} tool surface from ${group.sourceKind}.`,
     });
   });

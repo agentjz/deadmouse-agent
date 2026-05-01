@@ -11,6 +11,12 @@ import { codeReferencesTool } from "../packages/code/codeReferencesTool.js";
 import { codeSymbolsTool } from "../packages/code/codeSymbolsTool.js";
 import { coordinationPolicyTool } from "../packages/team/coordinationPolicyTool.js";
 import { downloadUrlTool } from "../packages/network/downloadUrlTool.js";
+import { dreamingStartTool } from "../packages/dreaming/dreamingStartTool.js";
+import {
+  dreamingLoopNextTool,
+  dreamingLoopStartTool,
+  dreamingLoopStatusTool,
+} from "../packages/dreaming/dreamingLoopTools.js";
 import { editDocxTool } from "../packages/documents/editDocxTool.js";
 import { editFileTool } from "../packages/files/editFileTool.js";
 import { findFilesTool } from "../packages/files/findFilesTool.js";
@@ -74,6 +80,10 @@ import type { RegisteredTool, ToolGovernance } from "./types.js";
 const BUILTIN_TOOL_CATALOG: readonly RegisteredTool[] = [
   defineBuiltinTool(todoWriteTool, stateTool("task")),
   defineBuiltinTool(taskTool, stateTool("task", { risk: "medium", changeSignal: "optional", verificationSignal: "optional" })),
+  defineBuiltinTool(dreamingStartTool, stateTool("external", { risk: "high", changeSignal: "optional", verificationSignal: "optional" })),
+  defineBuiltinTool(dreamingLoopStartTool, stateTool("task", { risk: "medium", changeSignal: "optional", verificationSignal: "optional" })),
+  defineBuiltinTool(dreamingLoopNextTool, stateTool("task", { risk: "high", changeSignal: "optional", verificationSignal: "optional" })),
+  defineBuiltinTool(dreamingLoopStatusTool, readTool("task", { concurrencySafe: true, verificationSignal: "optional" })),
   defineBuiltinTool(listFilesTool, readTool("filesystem", { secondaryInWorkflows: WEB_WORKFLOWS, concurrencySafe: true })),
   defineBuiltinTool(findFilesTool, readTool("filesystem", { secondaryInWorkflows: WEB_WORKFLOWS, concurrencySafe: true })),
   defineBuiltinTool(readFileTool, readTool("filesystem", { secondaryInWorkflows: WEB_WORKFLOWS, concurrencySafe: true })),

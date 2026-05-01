@@ -51,7 +51,7 @@ test("teammate execution creation uses the same protocol ledger snapshots", asyn
   assert.equal(stored.assignmentSnapshot?.capabilityId, "team.teammate");
   assert.equal(stored.capabilityId, "team.teammate");
   assert.equal(stored.capabilityKind, "team");
-  assert.equal(stored.executionPolicy?.runnerType, "worker");
+  assert.equal(stored.executionPolicy?.type, "worker");
   assert.deepEqual(stored.waitPolicy, stored.executionPolicy?.leadWaitPolicy);
 });
 
@@ -69,6 +69,6 @@ test("background execution creation uses the same protocol ledger snapshots", as
   assert.equal(stored.assignmentSnapshot?.capabilityId, "background.command");
   assert.equal(stored.capabilityId, "background.command");
   assert.equal(stored.capabilityKind, "background");
-  assert.equal(stored.executionPolicy?.runnerType, "background");
+  assert.equal(stored.executionPolicy?.type, "background");
   assert.deepEqual(stored.waitPolicy, stored.executionPolicy?.leadWaitPolicy);
 });

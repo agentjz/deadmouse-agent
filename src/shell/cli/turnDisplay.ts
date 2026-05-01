@@ -1,6 +1,7 @@
 import type { InteractionTurnDisplay } from "../../interaction/shell.js";
 import { createWaitingSpinner, wrapCallbacksWithSpinnerStop } from "../../ui/spinner.js";
-import { createStreamRenderer } from "../../ui/streamRenderer.js";
+import { followExecutionForegroundStream } from "../../runtime-ui/executionForeground.js";
+import { createRuntimeUiAgentCallbacks } from "../../runtime-ui/agentCallbacks.js";
 
 export function createCliTurnDisplay(options: {
   cwd: string;
@@ -9,7 +10,9 @@ export function createCliTurnDisplay(options: {
   };
   abortSignal: AbortSignal;
 }): InteractionTurnDisplay {
-  const streamRenderer = createStreamRenderer(options.config, {
+  const runtimeUi = createRuntimeUiAgentCallbacks({
+    channel: "lead",
+    config: options.config,
     cwd: options.cwd,
     assistantLeadingBlankLine: true,
     assistantTrailingNewlines: "\n\n",
@@ -18,7 +21,7 @@ export function createCliTurnDisplay(options: {
     abortSignal: options.abortSignal,
   });
   const waitingSpinner = createWaitingSpinner({ label: "thinking" });
-  const callbacks = wrapCallbacksWithSpinnerStop(streamRenderer.callbacks, () => {
+  const callbacks = wrapCallbacksWithSpinnerStop(runtimeUi.callbacks, () => {
     waitingSpinner.stop();
   });
 
@@ -28,12 +31,20 @@ export function createCliTurnDisplay(options: {
   callbacks.onModelWaitStop = () => {
     waitingSpinner.stop();
   };
+  callbacks.onExecutionForegroundStream = async (event) => {
+    waitingSpinner.stop();
+    runtimeUi.flush();
+    await followExecutionForegroundStream({
+      ...event,
+      abortSignal: options.abortSignal,
+    });
+  };
 
   return {
     callbacks,
     flush() {
       waitingSpinner.stop();
-      streamRenderer.flush();
+      runtimeUi.flush();
     },
     dispose() {
       waitingSpinner.stop();

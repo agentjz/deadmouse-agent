@@ -3,6 +3,7 @@ import type { RuntimeConfig } from "../types.js";
 import { ExecutionStore } from "./store.js";
 import { runAgentExecution } from "./workerAgent.js";
 import { runCommandExecution } from "./workerCommand.js";
+import { runDreamingExecution } from "../capabilities/dreaming/runner.js";
 
 export async function runExecutionWorker(input: {
   rootDir: string;
@@ -20,6 +21,11 @@ export async function runExecutionWorker(input: {
   });
   const execution = await new ExecutionStore(input.rootDir).load(input.executionId);
   try {
+    if (execution.profile === "dreaming") {
+      await runDreamingExecution(input.rootDir, input.config, execution);
+      return;
+    }
+
     if (execution.lane === "command") {
       await runCommandExecution(input.rootDir, execution);
       return;

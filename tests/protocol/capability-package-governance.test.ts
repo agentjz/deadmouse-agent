@@ -33,7 +33,33 @@ function makePackage(id: string, input: {
       id: `${id}.adapter`,
       description: "test adapter",
     },
-    runnerType: "tool",
+    port: {
+      runner: { type: "tool", invocation: "Lead-selected test tool runner." },
+      permissionBoundary: {
+        world: "test tool lane",
+        autonomy: "test tool owns declared operation",
+        read: ["test input"],
+        write: ["test output"],
+        forbidden: ["machine strategy"],
+      },
+      foregroundOutput: {
+        mode: "inline_events",
+        sink: "runtime-ui",
+        section: "tool",
+        streams: ["tool", "result"],
+      },
+      artifacts: [{ kind: "observation", name: "test-result", description: "test result", required: false }],
+      closeout: {
+        required: false,
+        contract: "CloseoutContract",
+        requiredEvidence: [],
+        mergeProposal: "none",
+      },
+      wake: {
+        required: false,
+        reasons: [],
+      },
+    },
     governance: input.governance,
   });
 }
@@ -57,6 +83,8 @@ test("capability packages carry explicit governance without granting machine str
   assert.equal(pkg.machinePermissions.autoSelect, false);
   assert.equal(pkg.machinePermissions.autoDispatch, false);
   assert.equal(pkg.machinePermissions.decideStrategy, false);
+  assert.equal(pkg.port.autonomyOwner, "ecosystem");
+  assert.equal(pkg.port.runner.type, pkg.runner.type);
 });
 
 test("manifest parsing preserves install governance dependencies and diagnostics", () => {
@@ -70,7 +98,32 @@ test("manifest parsing preserves install governance dependencies and diagnostics
     description: "Alpha capability",
     source: { kind: "tool", builtIn: true },
     adapter: { kind: "tool", id: "tool.alpha.adapter", description: "adapter" },
-    runnerType: "tool",
+    port: {
+      runner: { type: "tool", invocation: "Lead-selected manifest test runner." },
+      permissionBoundary: {
+        world: "manifest test lane",
+        autonomy: "manifest test capability owns declared operation",
+        read: ["test input"],
+        write: ["test output"],
+        forbidden: ["machine strategy"],
+      },
+      foregroundOutput: {
+        mode: "inline_events",
+        sink: "runtime-ui",
+        section: "tool",
+        streams: ["tool", "result"],
+      },
+      artifacts: [{ kind: "observation", name: "test-result", description: "test result" }],
+      closeout: {
+        required: false,
+        requiredEvidence: [],
+        mergeProposal: "none",
+      },
+      wake: {
+        required: false,
+        reasons: [],
+      },
+    },
     governance: {
       enabled: true,
       installed: true,
@@ -86,6 +139,7 @@ test("manifest parsing preserves install governance dependencies and diagnostics
   assert.equal(pkg.governance.installRef, "builtin:alpha");
   assert.equal(pkg.governance.dependencies[0]?.version, ">=1.0.0");
   assert.equal(pkg.governance.diagnostics[0]?.message, "ready");
+  assert.equal(pkg.port.foregroundOutput.sink, "runtime-ui");
 });
 
 test("capability package diagnostics catch disabled packages duplicate ids and missing dependencies", () => {

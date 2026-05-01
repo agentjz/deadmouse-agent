@@ -68,18 +68,18 @@ test("parseSkillSource rejects invalid metadata with explicit schema failures", 
         [
           "---",
           "schema_version: skill",
-          "name: obsolete-load-mode",
-          "description: Obsolete load mode",
+          "name: removed-load-mode",
+          "description: Removed load mode",
           "load_mode: required",
           "---",
           "Body",
         ].join("\n"),
         {
-          absolutePath: path.join(ROOT, "skills", "obsolete-load-mode", "SKILL.md"),
+          absolutePath: path.join(ROOT, "skills", "removed-load-mode", "SKILL.md"),
           rootDir: ROOT,
         },
       ),
-    /load_mode.*obsolete/i,
+    /load_mode.*removed/i,
   );
 
   assert.throws(
@@ -88,18 +88,18 @@ test("parseSkillSource rejects invalid metadata with explicit schema failures", 
         [
           "---",
           "schema_version: skill",
-          "name: obsolete-required",
-          "description: Obsolete required flag",
+          "name: removed-required",
+          "description: Removed required flag",
           "required: true",
           "---",
           "Body",
         ].join("\n"),
         {
-          absolutePath: path.join(ROOT, "skills", "obsolete-required", "SKILL.md"),
+          absolutePath: path.join(ROOT, "skills", "removed-required", "SKILL.md"),
           rootDir: ROOT,
         },
       ),
-    /required.*obsolete/i,
+    /required.*removed/i,
   );
 
   assert.throws(

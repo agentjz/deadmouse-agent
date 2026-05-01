@@ -5,6 +5,7 @@ import { isLeadBlockingPolicy } from "../protocol/leadWait.js";
 import { snapshotExecutionWakeSignal, waitForExecutionWakeSignalChange } from "../protocol/wakeSignal.js";
 import { TaskStore } from "../tasks/store.js";
 import { throwIfAborted } from "../utils/abort.js";
+import { getForegroundStreamPath } from "./foregroundStream.js";
 import { reconcileActiveExecutions } from "./reconcile.js";
 import { ExecutionStore } from "./store.js";
 import type { ExecutionRecord } from "./types.js";
@@ -13,13 +14,31 @@ export async function waitForLeadWaitExecutionsToSettle(input: {
   cwd: string;
   objectiveText?: string;
   abortSignal?: AbortSignal;
+  onForegroundStream?: (event: {
+    executionId: string;
+    label: string;
+    streamPath: string;
+  }) => Promise<void> | void;
 }): Promise<void> {
   const context = await loadProjectContext(input.cwd);
+  const announced = new Set<string>();
 
   for (;;) {
     throwIfAborted(input.abortSignal, "Lead wait was aborted.");
     const snapshot = await snapshotExecutionWakeSignal(context.stateRootDir);
-    if (!await hasActiveLeadWaitExecutions(input.cwd, input.objectiveText, context.stateRootDir)) {
+    const active = await listActiveLeadWaitExecutions(input.cwd, input.objectiveText, context.stateRootDir);
+    for (const execution of active) {
+      if (execution.profile !== "dreaming" || announced.has(execution.id)) {
+        continue;
+      }
+      announced.add(execution.id);
+      await input.onForegroundStream?.({
+        executionId: execution.id,
+        label: "dreaming",
+        streamPath: getForegroundStreamPath(context.stateRootDir, execution.id),
+      });
+    }
+    if (active.length === 0) {
       return;
     }
     await waitForExecutionWakeSignalChange({
@@ -35,6 +54,14 @@ export async function hasActiveLeadWaitExecutions(
   objectiveText?: string,
   stateRootDir?: string,
 ): Promise<boolean> {
+  return (await listActiveLeadWaitExecutions(cwd, objectiveText, stateRootDir)).length > 0;
+}
+
+export async function listActiveLeadWaitExecutions(
+  cwd: string,
+  objectiveText?: string,
+  stateRootDir?: string,
+): Promise<ExecutionRecord[]> {
   const rootDir = stateRootDir ?? (await loadProjectContext(cwd)).stateRootDir;
   await reconcileActiveExecutions(rootDir);
   const [executions, tasks] = await Promise.all([
@@ -51,7 +78,7 @@ export async function hasActiveLeadWaitExecutions(
         .filter((task): task is ObjectiveTaskSnapshot => Boolean(task && task.meta.key === objective.key))
     : [];
 
-  return executions.some((execution) =>
+  return executions.filter((execution) =>
     isLeadBlockingPolicy(execution.waitPolicy) &&
     (!objective || isExecutionRelevantToObjective(execution, objective.key, relevantTasks)));
 }
@@ -61,7 +88,7 @@ function isExecutionRelevantToObjective(
   objectiveKey: string,
   relevantTasks: ObjectiveTaskSnapshot[],
 ): boolean {
-  const scope = execution.waitPolicy?.scope ?? "objective";
+  const scope = execution.waitPolicy.scope;
   if (scope === "global") {
     return true;
   }

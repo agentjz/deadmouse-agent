@@ -19,6 +19,10 @@ const DEFAULTS: Record<ExecutionProfile, { maxRuntimeMs: number; maxIdleMs: numb
     maxRuntimeMs: 900_000,
     maxIdleMs: 180_000,
   },
+  dreaming: {
+    maxRuntimeMs: 900_000,
+    maxIdleMs: 300_000,
+  },
 };
 
 const MIN_RUNTIME_MS = 1_000;

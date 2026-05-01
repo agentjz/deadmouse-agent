@@ -9,10 +9,7 @@ import {
   type CapabilityPackageGovernance,
   type CapabilitySourceKind,
 } from "./package.js";
-import type { CapabilityRunnerType } from "./runner.js";
-import { isCapabilityRunnerType } from "./runner.js";
-import type { LeadWaitPolicyInput } from "./leadWait.js";
-import { normalizeLeadWaitPolicy } from "./leadWait.js";
+import type { CapabilityPortInput } from "./port.js";
 
 export const CAPABILITY_MANIFEST_PROTOCOL = "deadmouse.capability-manifest" as const;
 
@@ -35,15 +32,10 @@ export interface CapabilityPackageManifest {
     id: string;
     description: string;
   };
-  runnerType: CapabilityRunnerType;
-  createsExecution?: boolean;
-  emitsWakeSignal?: boolean;
-  leadWaitPolicy?: LeadWaitPolicyInput;
+  port: CapabilityPortInput;
   inputSchema?: string;
   outputSchema?: string;
   budgetPolicy?: string;
-  artifactPolicy?: string;
-  closeoutPolicy?: string;
   availability?: string;
   tools?: readonly string[];
   cost?: CapabilityCost;
@@ -82,15 +74,7 @@ export function createCapabilityPackageFromManifest(manifest: CapabilityPackageM
       builtIn: manifest.source.builtIn ?? false,
     },
     adapter: manifest.adapter,
-    runnerType: manifest.runnerType,
-    runner: {
-      createsExecution: manifest.createsExecution,
-      emitsWakeSignal: manifest.emitsWakeSignal,
-      leadWaitPolicy: manifest.leadWaitPolicy,
-    },
-    budgetPolicy: manifest.budgetPolicy,
-    artifactPolicy: manifest.artifactPolicy,
-    closeoutPolicy: manifest.closeoutPolicy,
+    port: manifest.port,
     availability: manifest.availability,
     useWhen: manifest.bestFor,
     avoidWhen: manifest.notFor,
@@ -114,11 +98,6 @@ export function parseCapabilityPackageManifest(value: unknown): CapabilityPackag
   const kind = readText(record, "kind", "CapabilityPackageManifest");
   if (!isCapabilityKind(kind)) {
     throw new Error(`Unsupported capability kind '${kind}'.`);
-  }
-
-  const runnerType = readText(record, "runnerType", "CapabilityPackageManifest");
-  if (!isCapabilityRunnerType(runnerType)) {
-    throw new Error(`Unsupported capability runner type '${runnerType}'.`);
   }
 
   const source = readRecord(record.source, "CapabilityPackageManifest.source");
@@ -158,17 +137,10 @@ export function parseCapabilityPackageManifest(value: unknown): CapabilityPackag
       id: readText(adapter, "id", "CapabilityPackageManifest.adapter"),
       description: readText(adapter, "description", "CapabilityPackageManifest.adapter"),
     },
-    runnerType,
-    createsExecution: typeof record.createsExecution === "boolean" ? record.createsExecution : undefined,
-    emitsWakeSignal: typeof record.emitsWakeSignal === "boolean" ? record.emitsWakeSignal : undefined,
-    leadWaitPolicy: record.leadWaitPolicy === undefined
-      ? undefined
-      : normalizeLeadWaitPolicy(record.leadWaitPolicy),
+    port: parseCapabilityPortInput(record.port),
     inputSchema: readOptionalText(record, "inputSchema"),
     outputSchema: readOptionalText(record, "outputSchema"),
     budgetPolicy: readOptionalText(record, "budgetPolicy"),
-    artifactPolicy: readOptionalText(record, "artifactPolicy"),
-    closeoutPolicy: readOptionalText(record, "closeoutPolicy"),
     availability: readOptionalText(record, "availability"),
     tools: readOptionalTextArray(record, "tools"),
     cost,
@@ -177,6 +149,93 @@ export function parseCapabilityPackageManifest(value: unknown): CapabilityPackag
     extensionPoint: readOptionalText(record, "extensionPoint"),
     governance: parseGovernance(record.governance),
   };
+}
+
+function parseCapabilityPortInput(value: unknown): CapabilityPortInput {
+  const port = readRecord(value, "CapabilityPackageManifest.port");
+  const runner = readRecord(port.runner, "CapabilityPackageManifest.port.runner");
+  const permissionBoundary = readRecord(port.permissionBoundary, "CapabilityPackageManifest.port.permissionBoundary");
+  const foregroundOutput = readRecord(port.foregroundOutput, "CapabilityPackageManifest.port.foregroundOutput");
+  const closeout = readRecord(port.closeout, "CapabilityPackageManifest.port.closeout");
+  const wake = readRecord(port.wake, "CapabilityPackageManifest.port.wake");
+
+  return {
+    runner: {
+      type: readText(runner, "type", "CapabilityPackageManifest.port.runner"),
+      invocation: readText(runner, "invocation", "CapabilityPackageManifest.port.runner"),
+      createsExecution: typeof runner.createsExecution === "boolean" ? runner.createsExecution : undefined,
+      emitsProgress: typeof runner.emitsProgress === "boolean" ? runner.emitsProgress : undefined,
+      emitsArtifacts: typeof runner.emitsArtifacts === "boolean" ? runner.emitsArtifacts : undefined,
+      emitsCloseout: typeof runner.emitsCloseout === "boolean" ? runner.emitsCloseout : undefined,
+      emitsWakeSignal: typeof runner.emitsWakeSignal === "boolean" ? runner.emitsWakeSignal : undefined,
+      leadWaitPolicy: parseLeadWaitPolicyInput(runner.leadWaitPolicy),
+    },
+    permissionBoundary: {
+      world: readText(permissionBoundary, "world", "CapabilityPackageManifest.port.permissionBoundary"),
+      autonomy: readText(permissionBoundary, "autonomy", "CapabilityPackageManifest.port.permissionBoundary"),
+      read: readTextArray(permissionBoundary, "read"),
+      write: readTextArray(permissionBoundary, "write"),
+      forbidden: readTextArray(permissionBoundary, "forbidden"),
+    },
+    foregroundOutput: {
+      mode: readText(foregroundOutput, "mode", "CapabilityPackageManifest.port.foregroundOutput") as CapabilityPortInput["foregroundOutput"]["mode"],
+      sink: "runtime-ui",
+      section: readText(foregroundOutput, "section", "CapabilityPackageManifest.port.foregroundOutput"),
+      streams: readTextArray(foregroundOutput, "streams"),
+    },
+    artifacts: readArtifactDeclarations(port.artifacts),
+    closeout: {
+      required: closeout.required !== false,
+      contract: "CloseoutContract",
+      requiredEvidence: readTextArray(closeout, "requiredEvidence"),
+      mergeProposal: readText(closeout, "mergeProposal", "CapabilityPackageManifest.port.closeout") as CapabilityPortInput["closeout"]["mergeProposal"],
+    },
+    wake: {
+      required: wake.required !== false,
+      reasons: readTextArray(wake, "reasons"),
+    },
+  };
+}
+
+function parseLeadWaitPolicyInput(value: unknown): CapabilityPortInput["runner"]["leadWaitPolicy"] {
+  if (value === undefined) {
+    return undefined;
+  }
+  const record = readRecord(value, "CapabilityPackageManifest.port.runner.leadWaitPolicy");
+  const result: NonNullable<CapabilityPortInput["runner"]["leadWaitPolicy"]> = {};
+  const lead = readOptionalText(record, "lead");
+  if (lead === "none" || lead === "while_execution_active") {
+    result.lead = lead;
+  }
+  const wake = readOptionalText(record, "wake");
+  if (wake === "optional" || wake === "required") {
+    result.wake = wake;
+  }
+  const scope = readOptionalText(record, "scope");
+  if (scope === "global" || scope === "objective" || scope === "task") {
+    result.scope = scope;
+  }
+  const terminalStatuses = readOptionalTextArray(record, "terminalStatuses");
+  if (terminalStatuses) {
+    result.terminalStatuses = terminalStatuses.filter((status) =>
+      status === "completed" || status === "failed" || status === "aborted" || status === "paused") as NonNullable<typeof result.terminalStatuses>;
+  }
+  return result;
+}
+
+function readArtifactDeclarations(value: unknown): CapabilityPortInput["artifacts"] {
+  if (!Array.isArray(value)) {
+    throw new Error("CapabilityPackageManifest.port.artifacts must be an array.");
+  }
+  return value.map((item) => {
+    const record = readRecord(item, "CapabilityPackageManifest.port.artifacts");
+    return {
+      kind: readText(record, "kind", "CapabilityPackageManifest.port.artifacts"),
+      name: readText(record, "name", "CapabilityPackageManifest.port.artifacts"),
+      description: readText(record, "description", "CapabilityPackageManifest.port.artifacts"),
+      required: record.required === true,
+    };
+  });
 }
 
 function readRecord(value: unknown, label: string): Record<string, unknown> {
@@ -204,6 +263,14 @@ function readOptionalTextArray(record: Record<string, unknown>, key: string): st
   if (value === undefined) {
     return undefined;
   }
+  if (!Array.isArray(value)) {
+    throw new Error(`CapabilityPackageManifest.${key} must be an array.`);
+  }
+  return value.map((item) => String(item).trim()).filter(Boolean);
+}
+
+function readTextArray(record: Record<string, unknown>, key: string): string[] {
+  const value = record[key];
   if (!Array.isArray(value)) {
     throw new Error(`CapabilityPackageManifest.${key} must be an array.`);
   }

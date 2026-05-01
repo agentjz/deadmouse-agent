@@ -16,12 +16,6 @@ export const ui = {
   error(message: string): void {
     writeStderrLine(`${chalk.red("[x]")} ${message}`);
   },
-  tool(message: string): void {
-    writeStdoutLine(`${chalk.magenta("[tool]")} ${message}`);
-  },
-  dispatch(message: string): void {
-    writeStdoutLine(`${chalk.magenta("[dispatch]")} ${message}`);
-  },
   dim(message: string): void {
     writeStdoutLine(`${chalk.gray(message)}${ANSI_RESET}`);
   },

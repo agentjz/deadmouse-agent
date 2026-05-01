@@ -3,7 +3,11 @@ import { loadProjectContext } from "../context/projectContext.js";
 import { InteractiveSessionDriver } from "../interaction/sessionDriver.js";
 import type { InteractiveSessionDriverOptions } from "../interaction/sessionDriver.js";
 import type { InteractionShell } from "../interaction/shell.js";
-import { createTerminalLogWriter, mirrorInteractionShellToTerminalLog } from "../observability/terminalLog.js";
+import {
+  createTerminalLogWriter,
+  mirrorInteractionShellToTerminalLog,
+  mirrorProcessOutputToTerminalLog,
+} from "../observability/terminalLog.js";
 import { writeCliInteractiveIntro } from "../shell/cli/intro.js";
 import {
   createCliInteractionShell,
@@ -37,9 +41,11 @@ export async function startInteractiveChat(
 ): Promise<void> {
   const shell = resolveInteractiveShell(dependencies);
   const projectContext = await loadProjectContext(options.cwd);
+  const terminalLogWriter = createTerminalLogWriter(projectContext.stateRootDir, options.session.id);
+  const disposeTerminalOutputMirror = mirrorProcessOutputToTerminalLog(terminalLogWriter);
   const terminalShell = mirrorInteractionShellToTerminalLog(
     shell,
-    createTerminalLogWriter(projectContext.stateRootDir, options.session.id),
+    terminalLogWriter,
   );
   (dependencies.writeIntro ?? ((context) => {
     writeCliInteractiveIntro({
@@ -67,6 +73,7 @@ export async function startInteractiveChat(
   try {
     await driver.run();
   } finally {
+    disposeTerminalOutputMirror();
     terminalShell.dispose?.();
   }
 }

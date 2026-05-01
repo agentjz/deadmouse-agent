@@ -7,12 +7,12 @@ import test from "node:test";
 import { buildSystemPromptLayers, renderPromptLayers } from "../../src/agent/promptSections.js";
 import { executeToolCallWithRecovery } from "../../src/agent/turn.js";
 import { discoverSkills } from "../../src/capabilities/skills/discovery.js";
-import { createStreamRenderer } from "../../src/ui/streamRenderer.js";
+import { createRuntimeUiAgentCallbacks } from "../../src/runtime-ui/agentCallbacks.js";
 import { createTestRuntimeConfig } from "../helpers.js";
 
 const REPO_ROOT = process.cwd();
 
-test("repo skill catalog contains MinerU document skills and removes the retired pdf-reading skill", async () => {
+test("repo skill catalog contains MinerU document skills and keeps pdf-reading removed", async () => {
   const skills = await discoverSkills(REPO_ROOT, REPO_ROOT, []);
   const names = new Set(skills.map((skill) => skill.name));
 
@@ -128,24 +128,23 @@ test("executeToolCallWithRecovery returns document capability hints for supporte
   }
 });
 
-test("stream renderer shows MinerU document tool calls with file paths", async () => {
+test("runtime UI shows MinerU document tool calls with file paths", async () => {
   const output = await captureStdout(async () => {
-    const renderer = createStreamRenderer(
-      {
+    const runtimeUi = createRuntimeUiAgentCallbacks({
+      channel: "lead",
+      config: {
         showReasoning: false,
       },
-      {
-        cwd: REPO_ROOT,
-      },
-    );
+      cwd: REPO_ROOT,
+    });
 
-    renderer.callbacks.onToolCall?.(
+    runtimeUi.callbacks.onToolCall?.(
       "mineru_ppt_read",
       JSON.stringify({
         path: path.join(REPO_ROOT, "docs", "deck.pptx"),
       }),
     );
-    renderer.callbacks.onToolResult?.(
+    runtimeUi.callbacks.onToolResult?.(
       "mineru_ppt_read",
       JSON.stringify({
         path: path.join(REPO_ROOT, "docs", "deck.pptx"),
@@ -156,7 +155,9 @@ test("stream renderer shows MinerU document tool calls with file paths", async (
 
   assert.match(output, /mineru_ppt_read/);
   assert.match(output, /docs[\\/]+deck\.pptx/);
-  assert.match(output, /\[result\] mineru_ppt_read docs[\\/]+deck\.pptx ok/);
+  assert.match(output, /\[决策主脑\]/);
+  assert.match(output, /\[tool\] mineru_ppt_read docs[\\/]+deck\.pptx/);
+  assert.doesNotMatch(output, /\[result\] mineru_ppt_read docs[\\/]+deck\.pptx ok/);
   assert.doesNotMatch(output, /# Deck|\[preview\]/);
 });
 

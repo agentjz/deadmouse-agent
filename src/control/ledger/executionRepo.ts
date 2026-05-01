@@ -481,7 +481,12 @@ function mapExecutionRow(row: ExecutionRow): ExecutionRecord {
   });
 }
 
-function normalizeExecution(record: Omit<ExecutionRecord, "boundary"> & Partial<Pick<ExecutionRecord, "boundary">>): ExecutionRecord {
+function normalizeExecution(
+  record: Omit<ExecutionRecord, "boundary" | "waitPolicy"> & {
+    waitPolicy?: LeadWaitPolicyInput;
+    boundary?: ExecutionRecord["boundary"];
+  },
+): ExecutionRecord {
   const now = currentTimestamp();
   const profile = normalizeProfile(record.profile);
   const timeoutMs = normalizeOptionalNumber(record.timeoutMs);
@@ -568,12 +573,14 @@ function normalizeProfile(value: string): ExecutionProfile {
       return "teammate";
     case "workflow":
       return "workflow";
+    case "dreaming":
+      return "dreaming";
     default:
       throw new Error(`Invalid execution profile '${String(value)}'.`);
   }
 }
 
-function readWaitPolicy(value: string | null): ExecutionRecord["waitPolicy"] {
+function readWaitPolicy(value: string | null): LeadWaitPolicyInput | undefined {
   if (!value) {
     return undefined;
   }

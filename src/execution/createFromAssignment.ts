@@ -7,6 +7,7 @@ import type { ExecutionRecord, ExecutionWorktreePolicy } from "./types.js";
 
 export interface CreateExecutionFromAssignmentInput {
   rootDir: string;
+  id?: string;
   capability: CapabilityPackage;
   assignment: AssignmentContract;
   lane: ExecutionRecord["lane"];
@@ -34,6 +35,7 @@ export async function createExecutionFromAssignment(input: CreateExecutionFromAs
 
   const executionPolicy = createExecutionPolicySnapshot(input.capability.runner);
   return new ExecutionStore(input.rootDir).create({
+    id: input.id,
     lane: input.lane,
     profile: input.profile,
     launch: input.launch,

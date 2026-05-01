@@ -75,9 +75,6 @@ function createFakeShell(script: {
       heading(text) {
         outputs.push({ level: "heading", text });
       },
-      tool(text) {
-        outputs.push({ level: "tool", text });
-      },
       interrupt(text) {
         outputs.push({ level: "interrupt", text });
       },

@@ -31,7 +31,7 @@ export interface AfterToolCallHookResult {
 }
 
 export interface AgentDispatchEvent {
-  profile: "teammate" | "subagent" | "background";
+  profile: "teammate" | "subagent" | "background" | "dreaming";
   actorName: string;
   executionId: string;
   taskId?: number;
@@ -43,6 +43,11 @@ export interface AgentCallbacks {
   onModelWaitStart?: () => void;
   onModelWaitStop?: () => void;
   onDispatch?: (event: AgentDispatchEvent) => void;
+  onExecutionForegroundStream?: (event: {
+    executionId: string;
+    label: string;
+    streamPath: string;
+  }) => Promise<void> | void;
   onStatus?: (text: string) => void;
   onAssistantStage?: (text: string) => void;
   onAssistantDelta?: (delta: string) => void;

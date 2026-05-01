@@ -1,5 +1,7 @@
 import { createCapabilityProfile, type CapabilityProfile } from "../../protocol/capability.js";
 import { createCapabilityPackage, type CapabilityPackage } from "../../protocol/package.js";
+import { executionPort } from "../ports.js";
+import { listDreamingLoopWorkflowCapabilityPackages } from "./dreamingLoop.js";
 
 export interface WorkflowProfile extends CapabilityProfile {
   kind: "workflow";
@@ -30,7 +32,8 @@ function listWorkflowProfiles(): WorkflowProfile[] {
 }
 
 export function listWorkflowCapabilityPackages(): CapabilityPackage[] {
-  return listWorkflowProfiles().map((profile) => createCapabilityPackage({
+  return [
+    ...listWorkflowProfiles().map((profile) => createCapabilityPackage({
     packageId: `workflow.${profile.id}`,
     profile,
     source: {
@@ -42,9 +45,52 @@ export function listWorkflowCapabilityPackages(): CapabilityPackage[] {
     adapter: {
       kind: "workflow",
       id: `workflow.${profile.id}.adapter`,
-      description: "Adapts Lead-selected workflow methods into the generic capability package contract.",
+      description: "Docks Lead-selected workflow methods into the capability port.",
     },
-    runnerType: "workflow",
+    port: executionPort("workflow", {
+      runner: {
+        invocation: "Lead selects a workflow assignment; runtime records workflow progress and handoff points.",
+      },
+      permissionBoundary: {
+        world: "Lead-selected workflow lane",
+        autonomy: "Workflow owns method shape after Lead selection; protocol records stage evidence and handoffs.",
+        read: ["assigned context", "workflow artifacts"],
+        write: ["workflow progress", "workflow artifacts", "closeout records"],
+        forbidden: ["automatic worker dispatch", "machine-owned strategy", "bypassing Lead review between handoffs"],
+      },
+      foregroundOutput: {
+        mode: "inline_events",
+        sink: "runtime-ui",
+        section: "workflow",
+        streams: ["progress", "artifact", "closeout"],
+      },
+      artifacts: [
+        {
+          kind: "execution",
+          name: "workflow-execution",
+          description: "Execution record for the workflow run.",
+          required: true,
+        },
+        {
+          kind: "observation",
+          name: "workflow-stage-evidence",
+          description: "Stage evidence produced by the workflow.",
+          required: false,
+        },
+      ],
+      closeout: {
+        required: true,
+        contract: "CloseoutContract",
+        requiredEvidence: ["stage evidence", "handoff status"],
+        mergeProposal: "none",
+      },
+      wake: {
+        required: true,
+        reasons: ["completed", "failed", "aborted", "paused", "budget_exhausted"],
+      },
+    }),
     availability: profile.description,
-  }));
+    })),
+    ...listDreamingLoopWorkflowCapabilityPackages(),
+  ];
 }

@@ -5,7 +5,7 @@ import type { ExecutionPolicySnapshot } from "../protocol/executionPolicy.js";
 
 export type ExecutionLane = "agent" | "command";
 
-export type ExecutionProfile = "subagent" | "teammate" | "background" | "workflow";
+export type ExecutionProfile = "subagent" | "teammate" | "background" | "workflow" | "dreaming";
 
 export type ExecutionLaunchMode = "worker";
 
@@ -44,7 +44,7 @@ export interface ExecutionRecord {
   command?: string;
   timeoutMs?: number;
   stallTimeoutMs?: number;
-  waitPolicy?: LeadWaitPolicy;
+  waitPolicy: LeadWaitPolicy;
   assignmentId?: string;
   assignmentSnapshot?: AssignmentContract;
   capabilityId?: string;

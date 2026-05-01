@@ -2,7 +2,7 @@ import type Database from "better-sqlite3";
 
 import { currentTimestamp } from "./shared.js";
 
-const LEDGER_SCHEMA_VERSION = 7;
+const LEDGER_SCHEMA_VERSION = 8;
 
 export function applyLedgerMigrations(db: Database.Database): void {
   const userVersion = readUserVersion(db);
@@ -38,6 +38,10 @@ export function applyLedgerMigrations(db: Database.Database): void {
     addExecutionProtocolSnapshotColumns(db);
   }
 
+  if (userVersion > 0 && userVersion < 8) {
+    rebuildExecutionSchemaWithDreamingProfile(db);
+  }
+
   db.pragma(`user_version = ${LEDGER_SCHEMA_VERSION}`);
   ensureLedgerMetaRow(db, "schema_version", String(LEDGER_SCHEMA_VERSION));
 }
@@ -47,7 +51,7 @@ function createExecutionSchema(db: Database.Database): void {
     CREATE TABLE IF NOT EXISTS executions (
       id TEXT PRIMARY KEY,
       lane TEXT NOT NULL CHECK (lane IN ('agent', 'command')),
-      profile TEXT NOT NULL CHECK (profile IN ('subagent', 'teammate', 'background', 'workflow')),
+      profile TEXT NOT NULL CHECK (profile IN ('subagent', 'teammate', 'background', 'workflow', 'dreaming')),
       launch_mode TEXT NOT NULL CHECK (launch_mode IN ('worker')),
       requested_by TEXT NOT NULL,
       actor_name TEXT NOT NULL,
@@ -268,6 +272,100 @@ function rebuildExecutionSchemaWithWorkflowProfile(db: Database.Database): void 
       NULL,
       NULL,
       NULL,
+      summary,
+      result_text,
+      output,
+      exit_code,
+      pause_reason,
+      status_detail,
+      created_at,
+      updated_at,
+      finished_at
+    FROM executions_old
+    WHERE launch_mode = 'worker';
+
+    DROP TABLE executions_old;
+  `);
+}
+
+function rebuildExecutionSchemaWithDreamingProfile(db: Database.Database): void {
+  db.exec(`
+    DROP INDEX IF EXISTS idx_executions_status;
+    DROP INDEX IF EXISTS idx_executions_task;
+    DROP INDEX IF EXISTS idx_executions_actor;
+
+    ALTER TABLE executions RENAME TO executions_old;
+  `);
+
+  createExecutionSchema(db);
+
+  db.exec(`
+    INSERT INTO executions (
+      id,
+      lane,
+      profile,
+      launch_mode,
+      requested_by,
+      actor_name,
+      actor_role,
+      task_id,
+      objective_key,
+      objective_text,
+      cwd,
+      status,
+      worktree_policy,
+      worktree_name,
+      session_id,
+      pid,
+      prompt,
+      command,
+      timeout_ms,
+      stall_timeout_ms,
+      wait_policy_json,
+      assignment_id,
+      assignment_json,
+      capability_id,
+      capability_kind,
+      capability_package_json,
+      execution_policy_json,
+      summary,
+      result_text,
+      output,
+      exit_code,
+      pause_reason,
+      status_detail,
+      created_at,
+      updated_at,
+      finished_at
+    )
+    SELECT
+      id,
+      lane,
+      profile,
+      launch_mode,
+      requested_by,
+      actor_name,
+      actor_role,
+      task_id,
+      objective_key,
+      objective_text,
+      cwd,
+      status,
+      worktree_policy,
+      worktree_name,
+      session_id,
+      pid,
+      prompt,
+      command,
+      timeout_ms,
+      stall_timeout_ms,
+      wait_policy_json,
+      assignment_id,
+      assignment_json,
+      capability_id,
+      capability_kind,
+      capability_package_json,
+      execution_policy_json,
       summary,
       result_text,
       output,

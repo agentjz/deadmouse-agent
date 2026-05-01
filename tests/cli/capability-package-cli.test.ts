@@ -22,7 +22,32 @@ test("capability package cli installs disables enables diagnoses and tests local
     description: "Installed analysis workflow",
     source: { kind: "workflow", builtIn: false },
     adapter: { kind: "workflow", id: "workflow.analysis.adapter", description: "adapter" },
-    runnerType: "workflow",
+    port: {
+      runner: { type: "workflow", invocation: "Lead-selected CLI workflow runner." },
+      permissionBoundary: {
+        world: "CLI workflow lane",
+        autonomy: "workflow owns internal method",
+        read: ["assigned context"],
+        write: ["workflow artifacts"],
+        forbidden: ["machine strategy"],
+      },
+      foregroundOutput: {
+        mode: "inline_events",
+        sink: "runtime-ui",
+        section: "workflow",
+        streams: ["progress", "closeout"],
+      },
+      artifacts: [{ kind: "execution", name: "workflow-execution", description: "workflow execution" }],
+      closeout: {
+        required: true,
+        requiredEvidence: ["workflow evidence"],
+        mergeProposal: "none",
+      },
+      wake: {
+        required: true,
+        reasons: ["completed", "failed"],
+      },
+    },
     governance: {
       enabled: true,
       installed: true,

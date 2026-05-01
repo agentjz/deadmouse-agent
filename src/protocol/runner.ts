@@ -7,7 +7,7 @@ export type CapabilityRunnerType = string;
 
 export interface CapabilityRunnerDescriptor {
   protocol: typeof CAPABILITY_RUNNER_PROTOCOL;
-  runnerType: CapabilityRunnerType;
+  type: CapabilityRunnerType;
   requiresAssignment: true;
   decisionOwner: "lead";
   createsExecution: boolean;
@@ -40,7 +40,7 @@ export interface CapabilityRunner<TAssignment> {
 }
 
 export function createCapabilityRunnerDescriptor(input: {
-  runnerType: CapabilityRunnerType;
+  type: CapabilityRunnerType;
   createsExecution?: boolean;
   emitsProgress?: boolean;
   emitsArtifacts?: boolean;
@@ -52,7 +52,7 @@ export function createCapabilityRunnerDescriptor(input: {
   const emitsWakeSignal = input.emitsWakeSignal ?? true;
   return {
     protocol: CAPABILITY_RUNNER_PROTOCOL,
-    runnerType: input.runnerType,
+    type: input.type,
     requiresAssignment: true,
     decisionOwner: "lead",
     createsExecution,

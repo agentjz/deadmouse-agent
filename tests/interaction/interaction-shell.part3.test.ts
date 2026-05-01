@@ -9,6 +9,8 @@ import { InteractiveSessionDriver } from "../../src/interaction/sessionDriver.js
 import type { InteractionShell } from "../../src/interaction/shell.js";
 import { createReadlineInputPort } from "../../src/shell/cli/readlineInput.js";
 import { startInteractiveChat, type StartInteractiveChatDependencies } from "../../src/ui/interactive.js";
+import { mirrorProcessOutputToTerminalLog, type TerminalLogWriter } from "../../src/observability/terminalLog.js";
+import { writeStdoutLine } from "../../src/utils/stdio.js";
 import { createAbortError } from "../../src/utils/abort.js";
 import { createTempWorkspace, createTestRuntimeConfig, initGitRepo } from "../helpers.js";
 
@@ -74,9 +76,6 @@ function createFakeShell(script: {
       },
       heading(text) {
         outputs.push({ level: "heading", text });
-      },
-      tool(text) {
-        outputs.push({ level: "tool", text });
       },
       interrupt(text) {
         outputs.push({ level: "interrupt", text });
@@ -292,11 +291,50 @@ test("startInteractiveChat mirrors terminal input and output into observability 
   assert.match(log, /intro output/);
   assert.match(log, /> hello terminal/);
   assert.match(log, /assistant says hello/);
-  assert.match(log, /\[tool:call\] read_file \(.* bytes\)/);
-  assert.match(log, /\[tool:result\] read_file \(.* bytes\)/);
+  assert.match(log, /\[tool\] read_file/);
+  assert.doesNotMatch(log, /\[result\] read_file ok/);
   assert.doesNotMatch(log, /secret\.txt/);
   assert.doesNotMatch(log, /very large tool result body/);
   assert.match(log, /echo hello terminal/);
+});
+
+test("terminal output mirror records direct runtime stdout such as foreground execution streams", () => {
+  const writes: string[] = [];
+  const writer: TerminalLogWriter = {
+    write(text) {
+      writes.push(text);
+    },
+  };
+  const dispose = mirrorProcessOutputToTerminalLog(writer);
+
+  try {
+    writeStdoutLine("[做梦] foreground started exec-1");
+  } finally {
+    dispose();
+  }
+
+  assert.match(writes.join(""), /\[做梦\] foreground started exec-1/);
+});
+
+test("terminal output mirror suppresses transient thinking spinner frames", () => {
+  const writes: string[] = [];
+  const writer: TerminalLogWriter = {
+    write(text) {
+      writes.push(text);
+    },
+  };
+  const dispose = mirrorProcessOutputToTerminalLog(writer);
+
+  try {
+    writeStdoutLine("\r[■   ] thinking");
+    writeStdoutLine("[tool] read_file package.json");
+  } finally {
+    dispose();
+  }
+
+  const log = writes.join("");
+  assert.doesNotMatch(log, /thinking/);
+  assert.match(log, /\[tool\] read_file package\.json/);
 });
 
 test("startInteractiveChat surfaces shell bootstrap failures directly", async () => {

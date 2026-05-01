@@ -2,6 +2,7 @@ import { createAssignmentContract, formatAssignmentContract } from "../../protoc
 import { createCapabilityProfile } from "../../protocol/capability.js";
 import { formatCloseoutInstruction } from "../../protocol/closeout.js";
 import { createCapabilityPackage, formatCapabilityPackageForLead, type CapabilityPackage } from "../../protocol/package.js";
+import { executionPort } from "../ports.js";
 
 const TEAM_CAPABILITY_PROFILE = createCapabilityProfile({
   kind: "team",
@@ -30,9 +31,50 @@ export function getTeamCapabilityPackage(): CapabilityPackage {
     adapter: {
       kind: "agent",
       id: "team.teammate.adapter",
-      description: "Adapts Lead-selected teammates into the generic capability package contract.",
+      description: "Docks Lead-selected teammates into the capability port.",
     },
-    runnerType: "worker",
+    port: executionPort("worker", {
+      runner: {
+        invocation: "Lead calls spawn_teammate with AssignmentContract fields; runtime starts a teammate worker.",
+      },
+      permissionBoundary: {
+        world: "Assigned teammate execution lane",
+        autonomy: "Teammate owns its assigned work slice and returns evidence; Lead owns final judgment.",
+        read: ["assigned context", "allowed project evidence"],
+        write: ["assigned execution artifacts", "closeout records"],
+        forbidden: ["final user closeout ownership", "machine-selected dispatch", "dispatching strategy for Lead"],
+      },
+      foregroundOutput: {
+        mode: "inline_events",
+        sink: "runtime-ui",
+        section: "team",
+        streams: ["progress", "closeout"],
+      },
+      artifacts: [
+        {
+          kind: "execution",
+          name: "teammate-execution",
+          description: "Execution record for the teammate assignment.",
+          required: true,
+        },
+        {
+          kind: "observation",
+          name: "teammate-evidence",
+          description: "Evidence and findings returned by the teammate.",
+          required: false,
+        },
+      ],
+      closeout: {
+        required: true,
+        contract: "CloseoutContract",
+        requiredEvidence: ["evidence", "risks", "next Lead suggestion"],
+        mergeProposal: "none",
+      },
+      wake: {
+        required: true,
+        reasons: ["completed", "failed", "aborted", "paused", "budget_exhausted"],
+      },
+    }),
     availability: "Longer-running collaborator with a named role and independent context.",
   });
 }

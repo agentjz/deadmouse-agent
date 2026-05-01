@@ -6,7 +6,7 @@ export const EXECUTION_POLICY_PROTOCOL = "deadmouse.execution-policy" as const;
 
 export interface ExecutionPolicySnapshot {
   protocol: typeof EXECUTION_POLICY_PROTOCOL;
-  runnerType: CapabilityRunnerType;
+  type: CapabilityRunnerType;
   createsExecution: boolean;
   progressExpected: boolean;
   artifactsExpected: boolean;
@@ -18,7 +18,7 @@ export interface ExecutionPolicySnapshot {
 export function createExecutionPolicySnapshot(runner: CapabilityRunnerDescriptor): ExecutionPolicySnapshot {
   return normalizeExecutionPolicySnapshot({
     protocol: EXECUTION_POLICY_PROTOCOL,
-    runnerType: runner.runnerType,
+    type: runner.type,
     createsExecution: runner.createsExecution,
     progressExpected: runner.emitsProgress,
     artifactsExpected: runner.emitsArtifacts,
@@ -31,7 +31,7 @@ export function createExecutionPolicySnapshot(runner: CapabilityRunnerDescriptor
 export function normalizeExecutionPolicySnapshot(input: ExecutionPolicySnapshot): ExecutionPolicySnapshot {
   return {
     protocol: EXECUTION_POLICY_PROTOCOL,
-    runnerType: String(input.runnerType ?? "").trim() || "worker",
+    type: String(input.type ?? "").trim() || "worker",
     createsExecution: input.createsExecution !== false,
     progressExpected: input.progressExpected !== false,
     artifactsExpected: input.artifactsExpected !== false,

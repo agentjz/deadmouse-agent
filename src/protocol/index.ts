@@ -9,6 +9,7 @@ export * from "./leadWait.js";
 export * from "./manifest.js";
 export * from "./manifestBundle.js";
 export * from "./package.js";
+export * from "./port.js";
 export * from "./progress.js";
 export * from "./registry.js";
 export * from "./runner.js";

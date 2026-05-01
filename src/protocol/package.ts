@@ -1,7 +1,7 @@
 import type { AssignmentContract } from "./assignment.js";
 import { normalizeProtocolId, type CapabilityProfile } from "./capability.js";
-import type { LeadWaitPolicyInput } from "./leadWait.js";
-import { createCapabilityRunnerDescriptor, type CapabilityRunnerDescriptor, type CapabilityRunnerType } from "./runner.js";
+import { createCapabilityPort, type CapabilityPort, type CapabilityPortInput } from "./port.js";
+import { createCapabilityRunnerDescriptor, type CapabilityRunnerDescriptor } from "./runner.js";
 
 export const CAPABILITY_PACKAGE_PROTOCOL = "deadmouse.capability-package" as const;
 
@@ -19,20 +19,6 @@ export interface CapabilityPackageAdapter {
   kind: CapabilityAdapterKind;
   id: string;
   description: string;
-}
-
-export interface CapabilityPackageContracts {
-  input: "AssignmentContract";
-  progress: "ProgressEvent";
-  artifact: "ArtifactRef";
-  output: "CloseoutContract";
-  wake: "WakeSignal";
-}
-
-export interface CapabilityPackagePolicies {
-  budgetPolicy: string;
-  artifactPolicy: string;
-  closeoutPolicy: string;
 }
 
 export interface CapabilityPackageLeadSummary {
@@ -75,11 +61,10 @@ export interface CapabilityPackage {
   version: string;
   packageId: string;
   profile: CapabilityProfile;
+  port: CapabilityPort;
   source: CapabilityPackageSource;
   adapter: CapabilityPackageAdapter;
   runner: CapabilityRunnerDescriptor;
-  contracts: CapabilityPackageContracts;
-  policies: CapabilityPackagePolicies;
   leadSummary: CapabilityPackageLeadSummary;
   machinePermissions: CapabilityPackageMachinePermissions;
   governance: CapabilityPackageGovernance;
@@ -91,13 +76,7 @@ export function createCapabilityPackage(input: {
   profile: CapabilityProfile;
   source: Omit<CapabilityPackageSource, "id"> & { id?: string };
   adapter: CapabilityPackageAdapter;
-  runnerType: CapabilityRunnerType;
-  runner?: Partial<Pick<CapabilityRunnerDescriptor, "createsExecution" | "emitsProgress" | "emitsArtifacts" | "emitsCloseout" | "emitsWakeSignal">> & {
-    leadWaitPolicy?: LeadWaitPolicyInput;
-  };
-  budgetPolicy?: string;
-  artifactPolicy?: string;
-  closeoutPolicy?: string;
+  port: CapabilityPortInput;
   availability?: string;
   useWhen?: readonly string[];
   avoidWhen?: readonly string[];
@@ -111,11 +90,13 @@ export function createCapabilityPackage(input: {
         : `${input.profile.kind}.${normalizedProfileId}`
     ),
   );
+  const port = createCapabilityPort(input.port);
   return {
     protocol: CAPABILITY_PACKAGE_PROTOCOL,
     version: input.version?.trim() || "1.0.0",
     packageId,
     profile: input.profile,
+    port,
     source: {
       ...input.source,
       id: normalizeProtocolId(input.source.id ?? packageId),
@@ -125,26 +106,14 @@ export function createCapabilityPackage(input: {
       id: normalizeProtocolId(input.adapter.id),
     },
     runner: createCapabilityRunnerDescriptor({
-      runnerType: input.runnerType,
-      createsExecution: input.runner?.createsExecution,
-      emitsProgress: input.runner?.emitsProgress,
-      emitsArtifacts: input.runner?.emitsArtifacts,
-      emitsCloseout: input.runner?.emitsCloseout,
-      emitsWakeSignal: input.runner?.emitsWakeSignal,
-      leadWaitPolicy: input.runner?.leadWaitPolicy,
+      type: port.runner.type,
+      createsExecution: port.runner.createsExecution,
+      emitsProgress: port.runner.emitsProgress,
+      emitsArtifacts: port.runner.emitsArtifacts,
+      emitsCloseout: port.runner.emitsCloseout,
+      emitsWakeSignal: port.runner.emitsWakeSignal,
+      leadWaitPolicy: port.runner.leadWaitPolicy,
     }),
-    contracts: {
-      input: "AssignmentContract",
-      progress: "ProgressEvent",
-      artifact: "ArtifactRef",
-      output: "CloseoutContract",
-      wake: "WakeSignal",
-    },
-    policies: {
-      budgetPolicy: input.budgetPolicy?.trim() || input.profile.budgetPolicy,
-      artifactPolicy: input.artifactPolicy?.trim() || "Record concrete evidence references when the capability produces observable work.",
-      closeoutPolicy: input.closeoutPolicy?.trim() || "Return a CloseoutContract before Lead judges completion.",
-    },
     leadSummary: {
       availability: input.availability?.trim() || input.profile.description,
       useWhen: [...(input.useWhen ?? input.profile.bestFor)],
@@ -176,8 +145,8 @@ export function formatCapabilityPackageForLead(pkg: CapabilityPackage): string {
   return [
     `- ${pkg.packageId} [${pkg.profile.kind}] ${pkg.profile.name}`,
     `  available: ${pkg.leadSummary.availability}`,
-    `  cost: ${pkg.profile.cost}; runner: ${pkg.runner.runnerType}; source: ${pkg.source.kind}`,
-    `  input/output: ${pkg.contracts.input} -> ${pkg.contracts.output}`,
+    `  cost: ${pkg.profile.cost}; runner: ${pkg.runner.type}; source: ${pkg.source.kind}`,
+    `  port: ${pkg.port.permissionBoundary.world}; output: ${pkg.port.closeout.contract}; wake: ${pkg.port.wake.required ? "required" : "optional"}`,
   ].join("\n");
 }
 
@@ -233,11 +202,35 @@ export function diagnoseCapabilityPackages(packages: readonly CapabilityPackage[
       });
     }
 
-    if (!pkg.source.kind || !pkg.adapter.kind || !pkg.runner.runnerType) {
+    if (!pkg.source.kind || !pkg.adapter.kind || !pkg.runner.type) {
       findings.push({
         severity: "error",
         packageId: pkg.packageId,
         message: `Capability package '${pkg.packageId}' has incomplete source adapter or runner metadata.`,
+      });
+    }
+
+    if (pkg.port.runner.type !== pkg.runner.type) {
+      findings.push({
+        severity: "error",
+        packageId: pkg.packageId,
+        message: `Capability package '${pkg.packageId}' port runner '${pkg.port.runner.type}' does not match runner '${pkg.runner.type}'.`,
+      });
+    }
+
+    if (!pkg.port.permissionBoundary.world || !pkg.port.permissionBoundary.autonomy) {
+      findings.push({
+        severity: "error",
+        packageId: pkg.packageId,
+        message: `Capability package '${pkg.packageId}' has incomplete port permission boundary.`,
+      });
+    }
+
+    if (pkg.port.foregroundOutput.sink !== "runtime-ui") {
+      findings.push({
+        severity: "error",
+        packageId: pkg.packageId,
+        message: `Capability package '${pkg.packageId}' does not dock foreground output through runtime-ui.`,
       });
     }
 
