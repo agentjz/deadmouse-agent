@@ -15,6 +15,18 @@ export interface HttpSessionRecord {
   updatedAt: string;
 }
 
+export interface HttpSessionWriteResult {
+  session: HttpSessionRecord;
+  persistenceChanged: boolean;
+  persistencePath?: string;
+}
+
+export interface HttpSessionDeleteResult {
+  deleted: boolean;
+  persistenceChanged: boolean;
+  persistencePath?: string;
+}
+
 interface HttpSessionStoreDocument {
   version: 1;
   updatedAt: string;
@@ -23,6 +35,7 @@ interface HttpSessionStoreDocument {
 
 const SESSION_STORE_BY_ROOT = new Map<string, Map<string, HttpSessionRecord>>();
 const PERSISTENCE_FILENAME = "http-sessions.json";
+export const HTTP_SESSION_STORE_RELATIVE_PATH = ".kitty/network/http-sessions.json";
 
 export async function listHttpSessions(stateRootDir: string): Promise<HttpSessionRecord[]> {
   const sessions = await readAllSessions(stateRootDir);
@@ -41,24 +54,42 @@ export async function getHttpSession(
 export async function putHttpSession(
   stateRootDir: string,
   session: HttpSessionRecord,
-): Promise<HttpSessionRecord> {
+): Promise<HttpSessionWriteResult> {
   const rootKey = normalizeRootKey(stateRootDir);
-  const byId = SESSION_STORE_BY_ROOT.get(rootKey) ?? new Map<string, HttpSessionRecord>();
+  const byId = SESSION_STORE_BY_ROOT.get(rootKey) ?? await loadSessionsIntoMemory(stateRootDir);
+  const before = buildPersistedSessions(byId);
   byId.set(session.id, cloneSession(session));
   SESSION_STORE_BY_ROOT.set(rootKey, byId);
-  await flushPersistedSessions(stateRootDir, byId);
-  return cloneSession(session);
+  const after = buildPersistedSessions(byId);
+  const persistenceChanged = !samePersistedSessions(before, after);
+  if (persistenceChanged) {
+    await flushPersistedSessions(stateRootDir, after);
+  }
+  return {
+    session: cloneSession(session),
+    persistenceChanged,
+    persistencePath: persistenceChanged ? HTTP_SESSION_STORE_RELATIVE_PATH : undefined,
+  };
 }
 
 export async function deleteHttpSession(
   stateRootDir: string,
   sessionId: string,
-): Promise<boolean> {
+): Promise<HttpSessionDeleteResult> {
   const rootKey = normalizeRootKey(stateRootDir);
   const byId = SESSION_STORE_BY_ROOT.get(rootKey) ?? await loadSessionsIntoMemory(stateRootDir);
+  const before = buildPersistedSessions(byId);
   const removed = byId.delete(sessionId);
-  await flushPersistedSessions(stateRootDir, byId);
-  return removed;
+  const after = buildPersistedSessions(byId);
+  const persistenceChanged = !samePersistedSessions(before, after);
+  if (persistenceChanged) {
+    await flushPersistedSessions(stateRootDir, after);
+  }
+  return {
+    deleted: removed,
+    persistenceChanged,
+    persistencePath: persistenceChanged ? HTTP_SESSION_STORE_RELATIVE_PATH : undefined,
+  };
 }
 
 function normalizeRootKey(rootDir: string): string {
@@ -154,14 +185,22 @@ function getSessionStoreFilePath(stateRootDir: string): string {
   return path.join(statePaths.kittyDir, "network", PERSISTENCE_FILENAME);
 }
 
-async function flushPersistedSessions(stateRootDir: string, byId: Map<string, HttpSessionRecord>): Promise<void> {
-  const filePath = getSessionStoreFilePath(stateRootDir);
-  const persistedSessions = [...byId.values()]
+function buildPersistedSessions(byId: Map<string, HttpSessionRecord>): HttpSessionRecord[] {
+  return [...byId.values()]
     .filter((session) => session.persist)
     .map((session) => ({
       ...cloneSession(session),
       persist: true,
-    }));
+    }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function samePersistedSessions(left: HttpSessionRecord[], right: HttpSessionRecord[]): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+async function flushPersistedSessions(stateRootDir: string, persistedSessions: HttpSessionRecord[]): Promise<void> {
+  const filePath = getSessionStoreFilePath(stateRootDir);
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   if (persistedSessions.length === 0) {
     await fs.writeFile(

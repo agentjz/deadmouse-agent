@@ -128,11 +128,12 @@ export const httpSessionTool: RegisteredTool = {
             ok: true,
             action,
             session_id: sessionId,
-            deleted,
+            deleted: deleted.deleted,
           },
           null,
           2,
         ),
+        buildPersistenceMetadata(deleted),
       );
     }
 
@@ -158,28 +159,33 @@ export const httpSessionTool: RegisteredTool = {
       token: readNullableString(args.token),
       persist: typeof args.persist === "boolean" ? args.persist : undefined,
     });
-    await putHttpSession(context.projectContext.stateRootDir, next);
-
-    const changedPath = next.persist
-      ? ".kitty/network/http-sessions.json"
-      : undefined;
+    const written = await putHttpSession(context.projectContext.stateRootDir, next);
 
     return okResult(
       JSON.stringify(
         {
           ok: true,
           action,
-          session: toSessionSummary(next),
+          session: toSessionSummary(written.session),
         },
         null,
         2,
       ),
-      {
-        changedPaths: changedPath ? [changedPath] : undefined,
-      },
+      buildPersistenceMetadata(written),
     );
   },
 };
+
+function buildPersistenceMetadata(input: {
+  persistenceChanged: boolean;
+  persistencePath?: string;
+}): {
+  changedPaths?: string[];
+} | undefined {
+  return input.persistenceChanged && input.persistencePath
+    ? { changedPaths: [input.persistencePath] }
+    : undefined;
+}
 
 function readAction(value: unknown): SessionAction {
   const normalized = normalizeOptionalText(value);

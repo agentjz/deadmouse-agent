@@ -99,7 +99,7 @@ const BUILTIN_TOOL_CATALOG: readonly RegisteredTool[] = [
   defineBuiltinTool(readSpreadsheetTool, documentReadTool("spreadsheet")),
   defineBuiltinTool(httpProbeTool, readTool("external", { concurrencySafe: true, verificationSignal: "optional" })),
   defineBuiltinTool(httpRequestTool, readTool("external", { concurrencySafe: true, verificationSignal: "optional" })),
-  defineBuiltinTool(httpSessionTool, stateTool("external", { risk: "medium" })),
+  defineBuiltinTool(httpSessionTool, stateTool("external", { risk: "medium", changeSignal: "optional" })),
   defineBuiltinTool(httpSuiteTool, readTool("external", { verificationSignal: "optional" })),
   defineBuiltinTool(networkTraceTool, writeTool("external", { changeSignal: "required", verificationSignal: "optional" })),
   defineBuiltinTool(openapiInspectTool, readTool("external", { concurrencySafe: true, verificationSignal: "optional" })),

@@ -25,6 +25,8 @@ export async function runCommand(command: string, args: string[], options: Proce
   });
   let output = "";
   let timedOut = false;
+  const writeStdout = createLinePrefixWriter(process.stdout, options.streamLabel);
+  const writeStderr = createLinePrefixWriter(process.stderr, options.streamLabel);
   const timer = setTimeout(() => {
     timedOut = true;
     child.kill("SIGTERM");
@@ -34,14 +36,14 @@ export async function runCommand(command: string, args: string[], options: Proce
     const text = chunk.toString("utf8");
     output += text;
     if (options.streamOutput) {
-      writeStreamText(process.stdout, text, options.streamLabel);
+      writeStdout(text);
     }
   });
   child.stderr.on("data", (chunk) => {
     const text = chunk.toString("utf8");
     output += text;
     if (options.streamOutput) {
-      writeStreamText(process.stderr, text, options.streamLabel);
+      writeStderr(text);
     }
   });
 
@@ -63,19 +65,31 @@ export async function runCommand(command: string, args: string[], options: Proce
   };
 }
 
-function writeStreamText(stream: NodeJS.WriteStream, text: string, label?: string): void {
-  if (!label) {
-    stream.write(text);
-    return;
-  }
+export interface StreamWriterTarget {
+  write(text: string): unknown;
+}
 
-  const normalized = text.replace(/\r\n/g, "\n");
-  for (const line of normalized.split("\n")) {
-    if (line.length === 0) {
-      continue;
+export function createLinePrefixWriter(stream: StreamWriterTarget, label?: string): (text: string) => void {
+  let atLineStart = true;
+  return (text: string): void => {
+    if (!label) {
+      stream.write(text);
+      return;
     }
-    stream.write(`[${label}] ${line}\n`);
-  }
+
+    const normalized = text.replace(/\r\n/g, "\n");
+    const lines = normalized.split(/(\n)/);
+    for (const part of lines) {
+      if (!part) {
+        continue;
+      }
+      if (atLineStart) {
+        stream.write(`[${label}] `);
+      }
+      stream.write(part);
+      atLineStart = part === "\n";
+    }
+  };
 }
 
 export async function runNodeProcess(args: string[], options: ProcessRunOptions): Promise<ProcessRunResult> {
