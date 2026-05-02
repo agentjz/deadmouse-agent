@@ -16,6 +16,7 @@
   "files": [
     "dist",
     "README.md",
+    "README.en.md",
     "spec",
     "src/capabilities/skills/packages"
   ],
@@ -66,6 +67,7 @@
     "execa": "^9.6.0",
     "express": "^5.2.1",
     "fast-glob": "^3.3.3",
+    "figlet": "^1.11.0",
     "lowdb": "^7.0.1",
     "mammoth": "^1.10.0",
     "marked": "^17.0.4",

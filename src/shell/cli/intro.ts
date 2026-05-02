@@ -1,23 +1,29 @@
 import chalk from "chalk";
+import figlet from "figlet";
 
 import type { ShellOutputPort } from "../../interaction/shell.js";
 import type { SessionRecord } from "../../types.js";
 
-const KITTY_BANNER = [
-  "  /\\_/\\\\",
-  " ( o.o )",
-  "  > ^ <",
-  " /|   |\\\\",
-  "(_|___|_)",
-  "  kitty",
-].join("\n");
+const KITTY_WORDMARK_FONT = "ANSI Shadow";
+
+function renderKittyBanner(): string {
+  return figlet
+    .textSync("kitty agent", {
+      font: KITTY_WORDMARK_FONT,
+      horizontalLayout: "default",
+      verticalLayout: "default",
+      width: 120,
+      whitespaceBreak: false,
+    })
+    .trimEnd();
+}
 
 export function writeCliInteractiveIntro(options: {
   cwd: string;
   session: Pick<SessionRecord, "id">;
   output: ShellOutputPort;
 }): void {
-  options.output.plain(chalk.bold(chalk.greenBright(KITTY_BANNER)));
+  options.output.plain(chalk.bold(chalk.greenBright(renderKittyBanner())));
   options.output.dim(`session: ${options.session.id}`);
   options.output.dim(`cwd: ${options.cwd}`);
   options.output.dim("Capabilities: unified protocol surface (use /runtime to inspect current exposure)");

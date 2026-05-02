@@ -54,8 +54,8 @@ interface SyncReadmeCapabilitiesResult {
 }
 
 const README_FILES: Record<Locale, string> = {
-  en: "README.md",
-  zh: "README.zh.md",
+  en: "README.en.md",
+  zh: "README.md",
 };
 
 export async function syncReadmeCapabilities(

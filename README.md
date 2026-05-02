@@ -1,7 +1,7 @@
-# 🐱kitty-agent
+# 🐱小猫智能体
 
 <p align="center">
-  <a href="./README.zh.md">Chinese README</a>
+  <a href="./README.en.md">English README</a>
 </p>
 
 <p align="center">
@@ -10,183 +10,191 @@
   <img alt="MIT license" src="https://img.shields.io/badge/license-MIT-d4af37?style=for-the-badge&labelColor=1c1917">
 </p>
 
-Kitty is open source under the MIT License.
+小猫智能体是一个用 harness 逼出大模型极限能力的开源智能体框架。
+
+🐎 大模型像野马，harness 像缰绳，能力生态像草原。缰绳让力量更集中，让速度、方向和证据连在一起；草原提供足够大的行动空间，让文件读写、代码研究、文档解析、网络工具、队友、子代理、工作流、梦境、MCP 和外部能力包都能接进来，在统一协议下自由生长。
+
+🧠 在智能体设计里，如果历史、偏好和旧任务被自动塞进当下，旧惯性就会伪装成当前意图。小猫智能体只专注于当下：历史对话、最终输出、工具产物、运行事件、变更记录、trace 和 ledger 都会保留下来，但只通过查询工具进入当前判断。生态只是可用能力，不是行动意图；只有领导者显式选择，能力才会进入执行。
+
+🔌 小猫智能体对多 provider 友好，避免被唯一的模型厂商绑定死角。不同模型和外部生态可以接入同一套边界，最终用清楚的协议、证据和运行时约束逼出大模型最大的真实能力。
+
+Kitty 遵循 MIT 开源协议。
 
 <!-- capability-ecology:start -->
 
-## Built-in Profiles
+## 内置人格
 
-| Profile | What it does | Status |
+| Profile | 作用 | 状态 |
 | --- | --- | --- |
-| `intp` | Turns messy work into clear boundaries, responsibilities, evidence, and next steps. | ✅ |
-| `grok` | Pushes against weak assumptions, fake certainty, and decorative complexity. | ✅ |
-| `caveman` | Keeps output short, direct, and information-dense without losing facts. | ✅ |
-| `buddha` | Keeps long work calm, visible, and moving until evidence closes the loop. | ✅ |
+| `intp` | 把混乱任务拆成清楚的边界、责任、证据和下一步。 | ✅ |
+| `grok` | 挑穿弱前提、假确定性和装饰性复杂度。 | ✅ |
+| `caveman` | 输出更短、更直接、更高密度，但不丢事实。 | ✅ |
+| `buddha` | 让长任务保持平静、可见、持续推进，直到证据闭环。 | ✅ |
 
-## Capability Ecology
+## 能力生态
 
-### Execution Ecology
+### 执行生态
 
-| Capability | What it does | Status |
+| 能力 | 作用 | 状态 |
 | --- | --- | --- |
-| Dreaming | Works inside a Mirror World, explores improvements, preserves evidence, and returns merge proposals without touching the real project directly. | 🚧 |
-| Dreaming Loop | Runs repeated Dreaming rounds while keeping every continuation decision with Lead. | ✅ |
-| Subagent `explore` | Read-only codebase exploration for concrete facts. | ✅ |
-| Subagent `plan` | Read-only design analysis for implementation planning. | ✅ |
-| Subagent `code` | Focused implementation lane with edit and validation tools. | ✅ |
-| Team | Coordinates teammates through inbox, task, execution, and closeout records. | ✅ |
-| Workflow | Offers reusable work methods while Lead keeps strategy control. | ✅ |
-| Background | Runs slow commands in recorded execution lanes. | ✅ |
-| Skills | Loads focused local knowledge only when Lead asks for it. | ✅ |
-| MCP | Connects configured external tool servers through the governed capability surface. | ✅ |
-| Capability Package | Lets external ecosystems dock through a formal port instead of one-off glue logic. | ✅ |
+| Dreaming | 在 Mirror World 里探索改进、保留证据、交回 merge proposal，不直接破坏真实项目。 | 🚧 |
+| Dreaming Loop | 跑多轮做梦，但是否继续下一轮仍由 Lead 判断。 | ✅ |
+| Subagent `explore` | 只读探索代码，收集事实。 | ✅ |
+| Subagent `plan` | 只读分析设计，产出实现计划。 | ✅ |
+| Subagent `code` | 聚焦写代码，带编辑和验证工具。 | ✅ |
+| Team | 让多个队友通过 inbox、task、execution 和 closeout 正式协作。 | ✅ |
+| Workflow | 提供可复用工作方法，但策略仍由 Lead 控制。 | ✅ |
+| Background | 把慢命令放进可记录的执行通道。 | ✅ |
+| Skills | 只在 Lead 需要时加载本地知识包。 | ✅ |
+| MCP | 把配置过的外部工具服务器接入同一套能力治理面。 | ✅ |
+| Capability Package | 让外部生态通过正式 port 停靠进来。 | ✅ |
 
-### Built-in Skill Packages
+### 内置 Skill 包
 
-| Capability | What it does | Status |
+| 能力 | 作用 | 状态 |
 | --- | --- | --- |
-| `mineru-doc-reading` | Adds focused guidance for reading document files through MinerU precision or tokenless Agent lightweight parsing. | ✅ |
-| `mineru-image-reading` | Adds focused guidance for image reading through MinerU precision or tokenless Agent lightweight parsing. | ✅ |
-| `mineru-pdf-reading` | Adds focused guidance for PDF reading through MinerU precision or tokenless Agent lightweight parsing. | ✅ |
-| `mineru-ppt-reading` | Adds focused guidance for presentation reading through MinerU precision or tokenless Agent lightweight parsing. | ✅ |
-| `spec-alignment` | Keeps spec, code, and tests aligned after changes. | ✅ |
-| `test-guardrails` | Keeps verification grounded in repository contracts. | ✅ |
-| `web-research` | Adds focused guidance for evidence-based web research. | ✅ |
+| `mineru-doc-reading` | 提供用 MinerU 精准解析或免 Token Agent 轻量解析读取文档文件的专门方法。 | ✅ |
+| `mineru-image-reading` | 提供用 MinerU 精准解析或免 Token Agent 轻量解析读取图片的专门方法。 | ✅ |
+| `mineru-pdf-reading` | 提供用 MinerU 精准解析或免 Token Agent 轻量解析读取 PDF 的专门方法。 | ✅ |
+| `mineru-ppt-reading` | 提供用 MinerU 精准解析或免 Token Agent 轻量解析读取演示文稿的专门方法。 | ✅ |
+| `spec-alignment` | 用于变更后同步 spec、代码和测试。 | ✅ |
+| `test-guardrails` | 用于把验证约束在仓库契约里。 | ✅ |
+| `web-research` | 提供基于证据的网页研究方法。 | ✅ |
 
-### CLI Surface
+### CLI 功能面
 
-| Capability | What it does | Status |
+| 能力 | 作用 | 状态 |
 | --- | --- | --- |
-| `kitty` | Starts interactive mode or runs a one-shot prompt. | ✅ |
-| `kitty run` | Runs a one-shot task explicitly. | ✅ |
-| `kitty resume` | Resumes the latest or selected saved session. | ✅ |
-| `kitty sessions` | Lists recent sessions. | ✅ |
-| `kitty init` | Creates project-local `.kitty` files. | ✅ |
-| `kitty diff` | Shows the current project Git diff. | ✅ |
-| `kitty changes` | Lists or reads recorded file changes. | ✅ |
-| `kitty undo` | Undoes the latest or selected recorded change. | ✅ |
-| `kitty config` | Reads and updates local Kitty configuration. | ✅ |
-| `kitty doctor` | Checks provider, runtime, and observability health. | ✅ |
-| `kitty capability package` | Installs, lists, enables, disables, diagnoses, and tests capability packages. | ✅ |
-| `kitty regression` | Captures and runs evidence-backed regression cases. | ✅ |
-| `kitty telegram serve` | Starts the Telegram direct-message service. | ✅ |
+| `kitty` | 进入交互模式，或执行一次性 prompt。 | ✅ |
+| `kitty run` | 显式执行一次性任务。 | ✅ |
+| `kitty resume` | 恢复最近一次或指定历史会话。 | ✅ |
+| `kitty sessions` | 列出最近会话。 | ✅ |
+| `kitty init` | 创建项目本地 `.kitty` 文件。 | ✅ |
+| `kitty diff` | 查看当前项目 Git diff。 | ✅ |
+| `kitty changes` | 列出或读取已记录的文件变更。 | ✅ |
+| `kitty undo` | 回滚最近一次或指定变更记录。 | ✅ |
+| `kitty config` | 读取和更新本地 Kitty 配置。 | ✅ |
+| `kitty doctor` | 检查模型连接、运行时和观测状态。 | ✅ |
+| `kitty capability package` | 安装、查看、启停、诊断和测试能力包。 | ✅ |
+| `kitty regression` | 捕获并运行有证据支撑的回归案例。 | ✅ |
+| `kitty telegram serve` | 启动 Telegram 私聊服务。 | ✅ |
 
-### Dreaming Tools
+### Dreaming 工具
 
-| Tool | What it does | Status |
+| 工具 | 作用 | 状态 |
 | --- | --- | --- |
-| `dreaming_start` | Starts one Mirror World Dreaming execution. | 🚧 |
-| `dreaming_loop_start` | Creates a Dreaming Loop ledger. | ✅ |
-| `dreaming_loop_next` | Starts one explicit Dreaming round from a loop. | ✅ |
-| `dreaming_loop_status` | Reads Dreaming Loop state and round evidence. | ✅ |
+| `dreaming_start` | 启动一次 Mirror World 做梦执行。 | 🚧 |
+| `dreaming_loop_start` | 创建 Dreaming Loop 账本。 | ✅ |
+| `dreaming_loop_next` | 从 loop 启动一轮明确的 Dreaming。 | ✅ |
+| `dreaming_loop_status` | 查看 Dreaming Loop 状态和轮次证据。 | ✅ |
 
-### File And Code Tools
+### 文件与代码工具
 
-| Tool | What it does | Status |
+| 工具 | 作用 | 状态 |
 | --- | --- | --- |
-| `list_files` | Lists files and directories. | ✅ |
-| `find_files` | Finds files by path pattern. | ✅ |
-| `read_file` | Reads local files with anchors for later edits. | ✅ |
-| `search_files` | Searches file contents. | ✅ |
-| `write_file` | Creates new files. | ✅ |
-| `edit_file` | Edits existing files with read anchors. | ✅ |
-| `apply_patch` | Applies structured patches. | ✅ |
-| `undo_last_change` | Reverts the latest recorded file change. | ✅ |
-| `code_symbols` | Lists code symbols. | ✅ |
-| `code_references` | Finds code references. | ✅ |
-| `code_pattern` | Finds structural code patterns. | ✅ |
+| `list_files` | 列出文件和目录。 | ✅ |
+| `find_files` | 按路径模式找文件。 | ✅ |
+| `read_file` | 读取文件，并给后续编辑提供锚点。 | ✅ |
+| `search_files` | 搜索文件内容。 | ✅ |
+| `write_file` | 创建新文件。 | ✅ |
+| `edit_file` | 基于锚点编辑已有文件。 | ✅ |
+| `apply_patch` | 应用结构化补丁。 | ✅ |
+| `undo_last_change` | 回滚最近一次记录的文件修改。 | ✅ |
+| `code_symbols` | 列出代码符号。 | ✅ |
+| `code_references` | 查找代码引用。 | ✅ |
+| `code_pattern` | 查找代码结构模式。 | ✅ |
 
-### Document Tools
+### 文档工具
 
-| Tool | What it does | Status |
+| 工具 | 作用 | 状态 |
 | --- | --- | --- |
-| `mineru_pdf_read` | Reads PDFs through MinerU precision or tokenless Agent lightweight parsing. | ✅ |
-| `mineru_image_read` | Reads images through MinerU precision or tokenless Agent lightweight parsing. | ✅ |
-| `mineru_doc_read` | Reads document files through MinerU precision or tokenless Agent lightweight parsing. | ✅ |
-| `mineru_ppt_read` | Reads presentations through MinerU precision or tokenless Agent lightweight parsing. | ✅ |
-| `read_docx` | Reads DOCX files. | ✅ |
-| `write_docx` | Writes DOCX files. | ✅ |
-| `edit_docx` | Edits DOCX files. | ✅ |
-| `read_spreadsheet` | Reads spreadsheet files. | ✅ |
+| `mineru_pdf_read` | 用 MinerU 精准解析或免 Token Agent 轻量解析读取 PDF。 | ✅ |
+| `mineru_image_read` | 用 MinerU 精准解析或免 Token Agent 轻量解析读取图片。 | ✅ |
+| `mineru_doc_read` | 用 MinerU 精准解析或免 Token Agent 轻量解析读取文档。 | ✅ |
+| `mineru_ppt_read` | 用 MinerU 精准解析或免 Token Agent 轻量解析读取演示文稿。 | ✅ |
+| `read_docx` | 读取 DOCX。 | ✅ |
+| `write_docx` | 写入 DOCX。 | ✅ |
+| `edit_docx` | 编辑 DOCX。 | ✅ |
+| `read_spreadsheet` | 读取表格文件。 | ✅ |
 
-### Network And API Tools
+### 网络与 API 工具
 
-| Tool | What it does | Status |
+| 工具 | 作用 | 状态 |
 | --- | --- | --- |
-| `http_probe` | Checks a URL quickly. | ✅ |
-| `http_request` | Sends one HTTP request. | ✅ |
-| `http_session` | Manages reusable HTTP session state. | ✅ |
-| `http_suite` | Runs a small HTTP check suite. | ✅ |
-| `network_trace` | Records network evidence. | ✅ |
-| `openapi_inspect` | Inspects OpenAPI documents. | ✅ |
-| `openapi_lint` | Lints OpenAPI documents. | ✅ |
-| `download_url` | Downloads a URL into a file. | ✅ |
+| `http_probe` | 快速探测 URL。 | ✅ |
+| `http_request` | 发送一次 HTTP 请求。 | ✅ |
+| `http_session` | 管理可复用 HTTP 会话状态。 | ✅ |
+| `http_suite` | 运行一组轻量 HTTP 检查。 | ✅ |
+| `network_trace` | 记录网络取证。 | ✅ |
+| `openapi_inspect` | 检查 OpenAPI 文档。 | ✅ |
+| `openapi_lint` | 校验 OpenAPI 文档。 | ✅ |
+| `download_url` | 下载 URL 到文件。 | ✅ |
 
-### History And Trace Tools
+### 历史与 Trace 工具
 
-| Tool | What it does | Status |
+| 工具 | 作用 | 状态 |
 | --- | --- | --- |
-| `session_list` | Lists saved sessions. | ✅ |
-| `session_read` | Reads one saved session. | ✅ |
-| `session_search` | Searches session history. | ✅ |
-| `session_final_output` | Reads a session's final output. | ✅ |
-| `tool_artifact_read` | Reads stored tool artifacts. | ✅ |
-| `runtime_event_search` | Searches runtime events. | ✅ |
-| `change_record_read` | Reads recorded changes. | ✅ |
-| `agent_trace_list` | Lists agent traces. | ✅ |
-| `agent_trace_read` | Reads one agent trace. | ✅ |
+| `session_list` | 列出历史会话。 | ✅ |
+| `session_read` | 读取一个历史会话。 | ✅ |
+| `session_search` | 搜索历史会话。 | ✅ |
+| `session_final_output` | 读取会话最终输出。 | ✅ |
+| `tool_artifact_read` | 读取工具产物。 | ✅ |
+| `runtime_event_search` | 搜索运行事件。 | ✅ |
+| `change_record_read` | 读取变更记录。 | ✅ |
+| `agent_trace_list` | 列出 agent trace。 | ✅ |
+| `agent_trace_read` | 读取一个 agent trace。 | ✅ |
 
-### Task And Team Tools
+### 任务与队友工具
 
-| Tool | What it does | Status |
+| 工具 | 作用 | 状态 |
 | --- | --- | --- |
-| `todo_write` | Updates the visible todo list. | ✅ |
-| `task` | Creates a delegated task with a selected subagent type. | ✅ |
-| `task_create` | Creates a persistent task. | ✅ |
-| `task_get` | Reads one task. | ✅ |
-| `task_list` | Lists tasks. | ✅ |
-| `task_update` | Updates task state. | ✅ |
-| `claim_task` | Claims a task and binds a worktree. | ✅ |
-| `coordination_policy` | Updates team coordination policy. | ✅ |
-| `spawn_teammate` | Starts a teammate execution. | ✅ |
-| `list_teammates` | Lists teammates. | ✅ |
-| `send_message` | Sends a message to a teammate. | ✅ |
-| `read_inbox` | Reads Lead inbox messages. | ✅ |
-| `broadcast` | Broadcasts a message to teammates. | ✅ |
-| `shutdown_request` | Requests teammate shutdown. | ✅ |
-| `shutdown_response` | Responds to a shutdown request. | ✅ |
-| `plan_approval` | Records plan approval state. | ✅ |
-| `idle` | Records idle state. | ✅ |
+| `todo_write` | 更新可见 todo。 | ✅ |
+| `task` | 创建带 subagent 类型的委派任务。 | ✅ |
+| `task_create` | 创建持久任务。 | ✅ |
+| `task_get` | 读取一个任务。 | ✅ |
+| `task_list` | 列出任务。 | ✅ |
+| `task_update` | 更新任务状态。 | ✅ |
+| `claim_task` | 认领任务并绑定 worktree。 | ✅ |
+| `coordination_policy` | 更新团队协作策略。 | ✅ |
+| `spawn_teammate` | 启动队友执行。 | ✅ |
+| `list_teammates` | 列出队友。 | ✅ |
+| `send_message` | 给队友发消息。 | ✅ |
+| `read_inbox` | 读取 Lead inbox。 | ✅ |
+| `broadcast` | 向队友广播消息。 | ✅ |
+| `shutdown_request` | 请求队友关闭。 | ✅ |
+| `shutdown_response` | 响应关闭请求。 | ✅ |
+| `plan_approval` | 记录计划批准状态。 | ✅ |
+| `idle` | 记录空闲状态。 | ✅ |
 
-### Worktree, Shell, Background, And Skill Tools
+### Worktree、Shell、后台与 Skill 工具
 
-| Tool | What it does | Status |
+| 工具 | 作用 | 状态 |
 | --- | --- | --- |
-| `worktree_list` | Lists worktrees. | ✅ |
-| `worktree_get` | Reads one worktree record. | ✅ |
-| `worktree_events` | Reads worktree events. | ✅ |
-| `worktree_create` | Creates an isolated worktree. | ✅ |
-| `worktree_keep` | Marks a worktree to keep. | ✅ |
-| `worktree_remove` | Removes a worktree. | ✅ |
-| `run_shell` | Runs a foreground shell command. | ✅ |
-| `background_run` | Starts a background command. | ✅ |
-| `background_check` | Reads background command status. | ✅ |
-| `background_terminate` | Terminates a background command. | ✅ |
-| `load_skill` | Loads a local skill package. | ✅ |
+| `worktree_list` | 列出 worktree。 | ✅ |
+| `worktree_get` | 读取一个 worktree 记录。 | ✅ |
+| `worktree_events` | 读取 worktree 事件。 | ✅ |
+| `worktree_create` | 创建隔离 worktree。 | ✅ |
+| `worktree_keep` | 标记保留 worktree。 | ✅ |
+| `worktree_remove` | 删除 worktree。 | ✅ |
+| `run_shell` | 运行前台 shell 命令。 | ✅ |
+| `background_run` | 启动后台命令。 | ✅ |
+| `background_check` | 查看后台命令状态。 | ✅ |
+| `background_terminate` | 终止后台命令。 | ✅ |
+| `load_skill` | 加载本地 skill 包。 | ✅ |
 
 <!-- capability-ecology:end -->
 
-## Release Guide
+## 发布指引
 
-| Command | Meaning |
+| 命令 | 含义 |
 | --- | --- |
-| `npm login` | Sign in to NPM |
-| `npm whoami` | Confirm the current publishing account |
-| `npm.cmd run check` | Run type checking and build before publishing |
-| `npm.cmd test` | Run the full test suite before publishing |
-| `npm.cmd run verify:mineru-documents-api` | Verify the MinerU document capability API |
-| `npm pack --dry-run` | Preview the files that would be published to NPM |
-| `npm version patch` | Publish a patch version |
-| `npm version minor` | Publish a minor version |
-| `npm version major` | Publish a major version |
-| `npm publish` | Publish to NPM |
+| `npm login` | 登录 NPM |
+| `npm whoami` | 确认当前发布账号 |
+| `npm.cmd run check` | 发布前执行类型检查和构建 |
+| `npm.cmd test` | 发布前执行全量测试 |
+| `npm.cmd run verify:mineru-documents-api` | 验证 MinerU 文档能力 API |
+| `npm pack --dry-run` | 预览即将发布到 NPM 的文件 |
+| `npm version patch` | 发布补丁版本 |
+| `npm version minor` | 发布次版本 |
+| `npm version major` | 发布主版本 |
+| `npm publish` | 发布到 NPM |
