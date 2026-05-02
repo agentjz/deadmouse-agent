@@ -45,10 +45,10 @@ Kitty is open source under the MIT License.
 
 | Capability | What it does | Status |
 | --- | --- | --- |
-| `mineru-doc-reading` | Adds focused guidance for reading document files through MinerU. | ✅ |
-| `mineru-image-reading` | Adds focused guidance for image reading through MinerU. | ✅ |
-| `mineru-pdf-reading` | Adds focused guidance for PDF reading through MinerU. | ✅ |
-| `mineru-ppt-reading` | Adds focused guidance for presentation reading through MinerU. | ✅ |
+| `mineru-doc-reading` | Adds focused guidance for reading document files through MinerU precision or tokenless Agent lightweight parsing. | ✅ |
+| `mineru-image-reading` | Adds focused guidance for image reading through MinerU precision or tokenless Agent lightweight parsing. | ✅ |
+| `mineru-pdf-reading` | Adds focused guidance for PDF reading through MinerU precision or tokenless Agent lightweight parsing. | ✅ |
+| `mineru-ppt-reading` | Adds focused guidance for presentation reading through MinerU precision or tokenless Agent lightweight parsing. | ✅ |
 | `spec-alignment` | Keeps spec, code, and tests aligned after changes. | ✅ |
 | `test-guardrails` | Keeps verification grounded in repository contracts. | ✅ |
 | `web-research` | Adds focused guidance for evidence-based web research. | ✅ |
@@ -100,10 +100,10 @@ Kitty is open source under the MIT License.
 
 | Tool | What it does | Status |
 | --- | --- | --- |
-| `mineru_pdf_read` | Reads PDFs through MinerU. | ✅ |
-| `mineru_image_read` | Reads images through MinerU. | ✅ |
-| `mineru_doc_read` | Reads document files through MinerU. | ✅ |
-| `mineru_ppt_read` | Reads presentations through MinerU. | ✅ |
+| `mineru_pdf_read` | Reads PDFs through MinerU precision or tokenless Agent lightweight parsing. | ✅ |
+| `mineru_image_read` | Reads images through MinerU precision or tokenless Agent lightweight parsing. | ✅ |
+| `mineru_doc_read` | Reads document files through MinerU precision or tokenless Agent lightweight parsing. | ✅ |
+| `mineru_ppt_read` | Reads presentations through MinerU precision or tokenless Agent lightweight parsing. | ✅ |
 | `read_docx` | Reads DOCX files. | ✅ |
 | `write_docx` | Writes DOCX files. | ✅ |
 | `edit_docx` | Edits DOCX files. | ✅ |

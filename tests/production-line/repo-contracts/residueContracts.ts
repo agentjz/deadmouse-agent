@@ -1,9 +1,10 @@
 import path from "node:path";
 
-import { exists, lineNumberAt, normalizePath } from "./files.mjs";
+import { exists, lineNumberAt, normalizePath } from "./files.ts";
+import type { RepoContractFinding, RepoContractScanInput } from "./types.ts";
 
-export async function scanCapabilityEcosystemResidue({ root }) {
-  const findings = [];
+export async function scanCapabilityEcosystemResidue({ root }: RepoContractScanInput): Promise<RepoContractFinding[]> {
+  const findings: RepoContractFinding[] = [];
   for (const directory of ["skills", "tools", "mcp", "team", "subagent", "workflows"]) {
     const fullPath = path.join(root, "src", directory);
     if (await exists(fullPath)) {
@@ -16,8 +17,8 @@ export async function scanCapabilityEcosystemResidue({ root }) {
   return findings;
 }
 
-export async function scanLegacyPackageResidue({ contents }) {
-  const findings = [];
+export async function scanLegacyPackageResidue({ contents }: RepoContractScanInput): Promise<RepoContractFinding[]> {
+  const findings: RepoContractFinding[] = [];
   const patterns = [
     {
       pattern: /\bimplicit (?:capability )?package\b/i,
@@ -33,7 +34,7 @@ export async function scanLegacyPackageResidue({ contents }) {
     },
   ];
   for (const [file, content] of contents) {
-    if (file.startsWith("scripts/repo-contracts/")) {
+    if (file.startsWith("tests/production-line/repo-contracts/")) {
       continue;
     }
     for (const item of patterns) {

@@ -154,12 +154,12 @@ test("mineru_pdf_read rejects files over 200 MB before contacting MinerU", async
   }
 });
 
-test("mineru_pdf_read rejects files over 600 pages before contacting MinerU", async (t) => {
+test("mineru_pdf_read rejects files over 200 pages before contacting MinerU", async (t) => {
   const root = await createTempWorkspace("mineru-page-limit", t);
   const pdfPath = path.join(root, "too-many-pages.pdf");
   await fs.writeFile(
     pdfPath,
-    Buffer.from("%PDF-1.4\n1 0 obj\n<< /Type /Pages /Count 601 >>\nendobj\n", "utf8"),
+    Buffer.from("%PDF-1.4\n1 0 obj\n<< /Type /Pages /Count 201 >>\nendobj\n", "utf8"),
   );
 
   const originalFetch = globalThis.fetch;
@@ -172,7 +172,7 @@ test("mineru_pdf_read rejects files over 600 pages before contacting MinerU", as
   try {
     await assert.rejects(
       () => mineruPdfReadTool.execute(JSON.stringify({ path: pdfPath }), makeToolContext(root, root) as any),
-      /page limit exceeded.*current value.*601.*600/i,
+      /page limit exceeded.*current value.*201.*200/i,
     );
     assert.equal(fetchCalled, false);
   } finally {
@@ -180,38 +180,81 @@ test("mineru_pdf_read rejects files over 600 pages before contacting MinerU", as
   }
 });
 
-test("mineru_doc_read falls back to native read_docx when MinerU token is missing", async (t) => {
-  const root = await createTempWorkspace("mineru-docx-fallback-token", t);
+test("mineru_doc_read uses tokenless MinerU Agent API when token is missing", async (t) => {
+  const root = await createTempWorkspace("mineru-docx-agent-tokenless", t);
   const docxPath = path.join(root, "proposal.docx");
   await writeDocxTool.execute(
     JSON.stringify({
       path: docxPath,
-      content: "# Proposal\n\nFallback should still read this paragraph.",
+      content: "# Proposal\n\nAgent API should read this paragraph.",
       format: "markdown",
     }),
     makeToolContext(root, root) as any,
   );
 
-  const result = await mineruDocReadTool.execute(
-    JSON.stringify({ path: docxPath }),
-    makeToolContext(root, root, {
-      config: {
-        ...createTestRuntimeConfig(root),
-        mineru: {
-          ...createTestRuntimeConfig(root).mineru,
-          token: "",
-        },
-      },
-    }) as any,
-  );
-  const parsed = JSON.parse(result.output) as Record<string, unknown>;
-  const fallback = parsed.fallback as Record<string, unknown>;
+  const originalFetch = globalThis.fetch;
+  const requests: string[] = [];
+  globalThis.fetch = (async (input: unknown) => {
+    const url = String(input);
+    requests.push(url);
 
-  assert.equal(parsed.provider, "native_docx_fallback");
-  assert.equal(parsed.format, "docx");
-  assert.equal(fallback?.used, true);
-  assert.equal(fallback?.trigger, "MINERU_TOKEN_MISSING");
-  assert.match(String(parsed.content), /Fallback should still read this paragraph/);
+    if (url.endsWith("/agent/parse/file")) {
+      return createJsonResponse({
+        code: 0,
+        data: {
+          task_id: "agent-docx-1",
+          file_url: "https://upload.example.com/agent-docx-1",
+        },
+      });
+    }
+
+    if (url === "https://upload.example.com/agent-docx-1") {
+      return new Response(null, { status: 200 });
+    }
+
+    if (url.endsWith("/agent/parse/agent-docx-1")) {
+      return createJsonResponse({
+        code: 0,
+        data: {
+          task_id: "agent-docx-1",
+          state: "done",
+          markdown_url: "https://cdn.example.com/agent-docx-1.md",
+        },
+      });
+    }
+
+    if (url === "https://cdn.example.com/agent-docx-1.md") {
+      return new Response("# Agent Proposal\n\nParsed without token.", { status: 200 });
+    }
+
+    throw new Error(`Unexpected fetch URL: ${url}`);
+  }) as typeof fetch;
+
+  try {
+    const result = await mineruDocReadTool.execute(
+      JSON.stringify({ path: docxPath }),
+      makeToolContext(root, root, {
+        config: {
+          ...createTestRuntimeConfig(root),
+          mineru: {
+            ...createTestRuntimeConfig(root).mineru,
+            token: "",
+          },
+        },
+      }) as any,
+    );
+    const parsed = JSON.parse(result.output) as Record<string, unknown>;
+
+    assert.equal(parsed.provider, "mineru_agent");
+    assert.equal(parsed.format, "docx");
+    assert.equal(parsed.taskId, "agent-docx-1");
+    assert.equal(parsed.markdownUrl, "https://cdn.example.com/agent-docx-1.md");
+    assert.match(String(parsed.markdownPreview), /Parsed without token/);
+    assert.equal(requests.some((item) => item.endsWith("/agent/parse/file")), true);
+    assert.equal(requests.some((item) => item.endsWith("/agent/parse/agent-docx-1")), true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("mineru_doc_read falls back to native read_docx when MinerU requests fail", async (t) => {

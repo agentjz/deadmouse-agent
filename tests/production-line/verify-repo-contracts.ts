@@ -1,7 +1,8 @@
-import process from "node:process";
+﻿import process from "node:process";
 
-import { listTextFiles, readTextFileMap } from "./repo-contracts/files.mjs";
-import { REPO_CONTRACTS } from "./repo-contracts/index.mjs";
+import { listTextFiles, readTextFileMap } from "./repo-contracts/files.ts";
+import { REPO_CONTRACTS } from "./repo-contracts/index.ts";
+import type { RepoContractReportedFinding } from "./repo-contracts/types.ts";
 
 const ROOT = process.cwd();
 const CHECK_ROOTS = ["src", "tests", "spec", "scripts"];
@@ -9,7 +10,7 @@ const CHECK_ROOTS = ["src", "tests", "spec", "scripts"];
 async function main() {
   const files = await listTextFiles(ROOT, CHECK_ROOTS);
   const contents = await readTextFileMap(ROOT, files);
-  const findings = [];
+  const findings: RepoContractReportedFinding[] = [];
 
   for (const contract of REPO_CONTRACTS) {
     const result = await contract.scan({ root: ROOT, files, contents });

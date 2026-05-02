@@ -59,6 +59,7 @@ export interface CliOverrides {
 export interface MineruRuntimeConfig {
   token: string;
   baseUrl: string;
+  agentBaseUrl: string;
   modelVersion: string;
   language: string;
   enableTable: boolean;

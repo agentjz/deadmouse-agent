@@ -1,4 +1,4 @@
-import fs from "node:fs/promises";
+﻿import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
@@ -29,9 +29,22 @@ const DETAIL_PATTERNS = [
   },
 ];
 
+interface TestDetailSignal {
+  id: string;
+  meaning: string;
+  count: number;
+}
+
+interface TestAuditReport {
+  path: string;
+  lines: number;
+  tests: number;
+  detailSignals: TestDetailSignal[];
+}
+
 async function main() {
   const files = await listTestFiles(TEST_ROOT);
-  const reports = [];
+  const reports: TestAuditReport[] = [];
   for (const filePath of files) {
     const content = await fs.readFile(filePath, "utf8");
     const relativePath = normalizePath(path.relative(ROOT, filePath));
@@ -83,9 +96,9 @@ async function main() {
   console.log("policy: this is an audit, not a gate. Split or relax tests only when detail locks implementation instead of protecting protocol, state, or visible product structure.");
 }
 
-async function listTestFiles(directory) {
+async function listTestFiles(directory: string): Promise<string[]> {
   const entries = await fs.readdir(directory, { withFileTypes: true });
-  const files = [];
+  const files: string[] = [];
   for (const entry of entries) {
     const fullPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
@@ -97,7 +110,7 @@ async function listTestFiles(directory) {
   return files;
 }
 
-function normalizePath(value) {
+function normalizePath(value: string): string {
   return value.replace(/\\/g, "/");
 }
 

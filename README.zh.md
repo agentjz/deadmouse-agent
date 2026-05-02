@@ -45,10 +45,10 @@ Kitty 遵循 MIT 开源协议。
 
 | 能力 | 作用 | 状态 |
 | --- | --- | --- |
-| `mineru-doc-reading` | 提供用 MinerU 读取文档文件的专门方法。 | ✅ |
-| `mineru-image-reading` | 提供用 MinerU 读取图片的专门方法。 | ✅ |
-| `mineru-pdf-reading` | 提供用 MinerU 读取 PDF 的专门方法。 | ✅ |
-| `mineru-ppt-reading` | 提供用 MinerU 读取演示文稿的专门方法。 | ✅ |
+| `mineru-doc-reading` | 提供用 MinerU 精准解析或免 Token Agent 轻量解析读取文档文件的专门方法。 | ✅ |
+| `mineru-image-reading` | 提供用 MinerU 精准解析或免 Token Agent 轻量解析读取图片的专门方法。 | ✅ |
+| `mineru-pdf-reading` | 提供用 MinerU 精准解析或免 Token Agent 轻量解析读取 PDF 的专门方法。 | ✅ |
+| `mineru-ppt-reading` | 提供用 MinerU 精准解析或免 Token Agent 轻量解析读取演示文稿的专门方法。 | ✅ |
 | `spec-alignment` | 用于变更后同步 spec、代码和测试。 | ✅ |
 | `test-guardrails` | 用于把验证约束在仓库契约里。 | ✅ |
 | `web-research` | 提供基于证据的网页研究方法。 | ✅ |
@@ -100,10 +100,10 @@ Kitty 遵循 MIT 开源协议。
 
 | 工具 | 作用 | 状态 |
 | --- | --- | --- |
-| `mineru_pdf_read` | 用 MinerU 读取 PDF。 | ✅ |
-| `mineru_image_read` | 用 MinerU 读取图片。 | ✅ |
-| `mineru_doc_read` | 用 MinerU 读取文档。 | ✅ |
-| `mineru_ppt_read` | 用 MinerU 读取演示文稿。 | ✅ |
+| `mineru_pdf_read` | 用 MinerU 精准解析或免 Token Agent 轻量解析读取 PDF。 | ✅ |
+| `mineru_image_read` | 用 MinerU 精准解析或免 Token Agent 轻量解析读取图片。 | ✅ |
+| `mineru_doc_read` | 用 MinerU 精准解析或免 Token Agent 轻量解析读取文档。 | ✅ |
+| `mineru_ppt_read` | 用 MinerU 精准解析或免 Token Agent 轻量解析读取演示文稿。 | ✅ |
 | `read_docx` | 读取 DOCX。 | ✅ |
 | `write_docx` | 写入 DOCX。 | ✅ |
 | `edit_docx` | 编辑 DOCX。 | ✅ |

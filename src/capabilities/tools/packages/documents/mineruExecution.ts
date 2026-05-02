@@ -6,6 +6,9 @@ import {
   MINERU_MAX_FILE_BYTES,
   MINERU_MAX_FILE_MB,
   MINERU_MAX_PAGES,
+  MINERU_AGENT_MAX_FILE_BYTES,
+  MINERU_AGENT_MAX_FILE_MB,
+  MINERU_AGENT_MAX_PAGES,
   type MineruDocumentCategory,
 } from "../../../../integrations/mineru/constants.js";
 import { MineruClient } from "../../../../integrations/mineru/client.js";
@@ -129,9 +132,7 @@ export async function executePreparedMineruRead(
   options: MineruReadExecutionOptions,
 ) {
   if (!context.config.mineru.token) {
-    throw new ToolExecutionError("Missing MINERU_API_TOKEN in .kitty/.env.", {
-      code: "MINERU_TOKEN_MISSING",
-    });
+    return executePreparedMineruAgentRead(request, context, options);
   }
 
   const client = new MineruClient({
@@ -220,6 +221,104 @@ export async function executePreparedMineruRead(
       `MinerU request failed: ${error instanceof Error ? error.message : String(error)}`,
       {
         code: "MINERU_REQUEST_FAILED",
+        details: {
+          requestedPath: request.targetPath,
+        },
+      },
+    );
+  }
+}
+
+async function executePreparedMineruAgentRead(
+  request: PreparedMineruReadRequest,
+  context: ToolContext,
+  options: MineruReadExecutionOptions,
+) {
+  if (request.size > MINERU_AGENT_MAX_FILE_BYTES) {
+    throw new ToolExecutionError(
+      `${options.toolName} Agent API size limit exceeded: current value ${formatMegabytes(request.size)} MB, limit ${MINERU_AGENT_MAX_FILE_MB} MB.`,
+      {
+        code: "MINERU_AGENT_SIZE_LIMIT_EXCEEDED",
+        details: {
+          requestedPath: request.targetPath,
+          currentBytes: request.size,
+          maxBytes: MINERU_AGENT_MAX_FILE_BYTES,
+        },
+      },
+    );
+  }
+
+  if (request.pageCount && request.pageCount > MINERU_AGENT_MAX_PAGES) {
+    throw new ToolExecutionError(
+      `${options.toolName} Agent API page limit exceeded: current value ${request.pageCount} pages, limit ${MINERU_AGENT_MAX_PAGES} pages.`,
+      {
+        code: "MINERU_AGENT_PAGE_LIMIT_EXCEEDED",
+        details: {
+          requestedPath: request.targetPath,
+          currentPages: request.pageCount,
+          maxPages: MINERU_AGENT_MAX_PAGES,
+          source: request.pageCountSource,
+        },
+      },
+    );
+  }
+
+  const client = new MineruClient({
+    ...context.config.mineru,
+    language: request.language ?? context.config.mineru.language,
+    modelVersion: request.modelVersion ?? context.config.mineru.modelVersion,
+  });
+
+  try {
+    const result = await client.parseWithAgentApi({
+      filePath: request.resolvedPath,
+      fileName: path.basename(request.resolvedPath),
+      isOcr: request.ocr,
+      language: request.language,
+    });
+    const artifactDir = path.join(
+      context.projectContext.stateRootDir,
+      ".kitty",
+      "mineru",
+      `agent-${Date.now().toString(36)}`,
+    );
+    const markdownPath = path.join(artifactDir, "full.md");
+    await ensureParentDirectory(markdownPath);
+    await fs.writeFile(markdownPath, result.markdown, "utf8");
+
+    return okResult(
+      JSON.stringify(
+        {
+          path: request.resolvedPath,
+          readable: true,
+          format: resolveFormat(options.format, request.extension),
+          sourceExtension: request.extension,
+          provider: "mineru_agent",
+          size: request.size,
+          pageCount: request.pageCount,
+          pageCountSource: request.pageCountSource,
+          taskId: result.taskId,
+          state: result.state,
+          artifactDir,
+          markdownPath,
+          markdownUrl: result.markdownUrl,
+          markdownPreview: truncateText(result.markdown, Math.max(2_000, Math.floor(context.config.maxReadBytes / 2))),
+          markdownPreviewTruncated:
+            result.markdown.length > Math.max(2_000, Math.floor(context.config.maxReadBytes / 2)),
+        },
+        null,
+        2,
+      ),
+    );
+  } catch (error) {
+    if (error instanceof ToolExecutionError) {
+      throw error;
+    }
+
+    throw new ToolExecutionError(
+      `MinerU Agent request failed: ${error instanceof Error ? error.message : String(error)}`,
+      {
+        code: "MINERU_AGENT_REQUEST_FAILED",
         details: {
           requestedPath: request.targetPath,
         },

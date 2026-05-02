@@ -9,8 +9,10 @@ import { executePreparedMineruRead, prepareMineruReadRequest } from "./mineruExe
 
 const SUPPORTED_EXTENSIONS = getMineruSupportedExtensions("doc");
 const DOCX_FALLBACK_CODES = new Set([
-  "MINERU_TOKEN_MISSING",
   "MINERU_REQUEST_FAILED",
+  "MINERU_AGENT_REQUEST_FAILED",
+  "MINERU_AGENT_SIZE_LIMIT_EXCEEDED",
+  "MINERU_AGENT_PAGE_LIMIT_EXCEEDED",
   "MINERU_UPLOAD_URL_MISSING",
   "MINERU_RESULT_MISSING",
 ]);
@@ -54,13 +56,6 @@ export const mineruDocReadTool: RegisteredTool = {
       supportedExtensions: SUPPORTED_EXTENSIONS,
       format: (extension) => extension.replace(/^\./, ""),
     });
-
-    if (request.extension === ".docx" && !context.config.mineru.token) {
-      return executeNativeDocxFallback(rawArgs, context, {
-        trigger: "MINERU_TOKEN_MISSING",
-        reason: "Missing MINERU_API_TOKEN in .kitty/.env.",
-      });
-    }
 
     try {
       return await executePreparedMineruRead(request, context, {

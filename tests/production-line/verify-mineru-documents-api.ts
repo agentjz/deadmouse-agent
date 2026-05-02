@@ -1,17 +1,24 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { resolveRuntimeConfig } from "../.test-build/src/config/store.js";
-import { loadProjectContext } from "../.test-build/src/context/projectContext.js";
-import { mineruImageReadTool } from "../.test-build/src/tools/documents/mineruImageReadTool.js";
-import { mineruPdfReadTool } from "../.test-build/src/tools/documents/mineruPdfReadTool.js";
+import { mineruImageReadTool } from "../../src/capabilities/tools/packages/documents/mineruImageReadTool.js";
+import { mineruPdfReadTool } from "../../src/capabilities/tools/packages/documents/mineruPdfReadTool.js";
+import { resolveRuntimeConfig } from "../../src/config/store.js";
+import { loadProjectContext } from "../../src/context/projectContext.js";
+import { createMinimalToolContext } from "./live-api-harness.ts";
 
 const IMAGE_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5Lh6kAAAAASUVORK5CYII=";
 
-async function main() {
+interface MineruResultShape {
+  batchId: string;
+  markdownPath: string;
+  path?: string;
+}
+
+async function main(): Promise<void> {
   const repoRoot = process.cwd();
-  const runtimeConfig = await resolveRuntimeConfig({ cwd: repoRoot, mode: "agent" });
+  const runtimeConfig = await resolveRuntimeConfig({ cwd: repoRoot });
   const smokeDir = path.join(repoRoot, ".tmp-smoke", "mineru-documents");
   const pdfPath = path.join(smokeDir, "mineru-verify.pdf");
   const imagePath = path.join(smokeDir, "mineru-verify.png");
@@ -26,50 +33,54 @@ async function main() {
       path: pdfPath,
       ocr: true,
     }),
-    createToolContext(runtimeConfig, repoRoot, projectContext, "verify-mineru-documents-api-pdf"),
+    createMinimalToolContext({
+      config: runtimeConfig,
+      cwd: repoRoot,
+      projectContext,
+      sessionId: "verify-mineru-documents-api-pdf",
+    }),
   );
   const imageResult = await mineruImageReadTool.execute(
     JSON.stringify({
       path: imagePath,
       ocr: true,
     }),
-    createToolContext(runtimeConfig, repoRoot, projectContext, "verify-mineru-documents-api-image"),
+    createMinimalToolContext({
+      config: runtimeConfig,
+      cwd: repoRoot,
+      projectContext,
+      sessionId: "verify-mineru-documents-api-image",
+    }),
   );
 
-  const parsedPdf = JSON.parse(pdfResult.output);
-  const parsedImage = JSON.parse(imageResult.output);
+  const parsedPdf = parseMineruResult(pdfResult.output);
+  const parsedImage = parseMineruResult(imageResult.output);
   console.log(JSON.stringify({ pdf: parsedPdf, image: parsedImage }, null, 2));
 
   for (const item of [parsedPdf, parsedImage]) {
-    if (!item.batchId || !item.markdownPath) {
-      throw new Error("MinerU document verification did not return the expected result shape.");
-    }
-
     const markdown = await fs.readFile(item.markdownPath, "utf8");
     if (!markdown.trim()) {
-      throw new Error(`MinerU markdown artifact is empty for ${item.path}.`);
+      throw new Error(`MinerU markdown artifact is empty for ${item.path ?? item.markdownPath}.`);
     }
   }
 }
 
-function createToolContext(config, cwd, projectContext, sessionId) {
+function parseMineruResult(output: string): MineruResultShape {
+  const parsed = JSON.parse(output) as Partial<MineruResultShape>;
+  if (typeof parsed.batchId !== "string" || typeof parsed.markdownPath !== "string") {
+    throw new Error("MinerU document verification did not return the expected result shape.");
+  }
+
   return {
-    config,
-    cwd,
-    sessionId,
-    identity: {
-      kind: "lead",
-      name: "lead",
-    },
-    projectContext,
-    changeStore: {},
-    createToolRegistry: () => ({}),
+    batchId: parsed.batchId,
+    markdownPath: parsed.markdownPath,
+    path: parsed.path,
   };
 }
 
-function createMinimalPdf(text) {
-  const objects = [];
-  const addObject = (content) => {
+function createMinimalPdf(text: string): string {
+  const objects: string[] = [];
+  const addObject = (content: string): void => {
     objects.push(content);
   };
 
@@ -98,11 +109,11 @@ function createMinimalPdf(text) {
   return body;
 }
 
-function escapePdfText(value) {
+function escapePdfText(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
 }
 
-main().catch((error) => {
+main().catch((error: unknown) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
 });

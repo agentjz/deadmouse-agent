@@ -109,26 +109,26 @@
         {
           "name": "`mineru-doc-reading`",
           "status": "✅",
-          "en": "Adds focused guidance for reading document files through MinerU.",
-          "zh": "提供用 MinerU 读取文档文件的专门方法。"
+          "en": "Adds focused guidance for reading document files through MinerU precision or tokenless Agent lightweight parsing.",
+          "zh": "提供用 MinerU 精准解析或免 Token Agent 轻量解析读取文档文件的专门方法。"
         },
         {
           "name": "`mineru-image-reading`",
           "status": "✅",
-          "en": "Adds focused guidance for image reading through MinerU.",
-          "zh": "提供用 MinerU 读取图片的专门方法。"
+          "en": "Adds focused guidance for image reading through MinerU precision or tokenless Agent lightweight parsing.",
+          "zh": "提供用 MinerU 精准解析或免 Token Agent 轻量解析读取图片的专门方法。"
         },
         {
           "name": "`mineru-pdf-reading`",
           "status": "✅",
-          "en": "Adds focused guidance for PDF reading through MinerU.",
-          "zh": "提供用 MinerU 读取 PDF 的专门方法。"
+          "en": "Adds focused guidance for PDF reading through MinerU precision or tokenless Agent lightweight parsing.",
+          "zh": "提供用 MinerU 精准解析或免 Token Agent 轻量解析读取 PDF 的专门方法。"
         },
         {
           "name": "`mineru-ppt-reading`",
           "status": "✅",
-          "en": "Adds focused guidance for presentation reading through MinerU.",
-          "zh": "提供用 MinerU 读取演示文稿的专门方法。"
+          "en": "Adds focused guidance for presentation reading through MinerU precision or tokenless Agent lightweight parsing.",
+          "zh": "提供用 MinerU 精准解析或免 Token Agent 轻量解析读取演示文稿的专门方法。"
         },
         {
           "name": "`spec-alignment`",
@@ -248,25 +248,41 @@
           "name": "dreaming_start",
           "status": "🚧",
           "en": "Starts one Mirror World Dreaming execution.",
-          "zh": "启动一次 Mirror World 做梦执行。"
+          "zh": "启动一次 Mirror World 做梦执行。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "dreaming_loop_start",
           "status": "✅",
           "en": "Creates a Dreaming Loop ledger.",
-          "zh": "创建 Dreaming Loop 账本。"
+          "zh": "创建 Dreaming Loop 账本。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "dreaming_loop_next",
           "status": "✅",
           "en": "Starts one explicit Dreaming round from a loop.",
-          "zh": "从 loop 启动一轮明确的 Dreaming。"
+          "zh": "从 loop 启动一轮明确的 Dreaming。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "dreaming_loop_status",
           "status": "✅",
           "en": "Reads Dreaming Loop state and round evidence.",
-          "zh": "查看 Dreaming Loop 状态和轮次证据。"
+          "zh": "查看 Dreaming Loop 状态和轮次证据。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         }
       ]
     },
@@ -280,67 +296,111 @@
           "name": "list_files",
           "status": "✅",
           "en": "Lists files and directories.",
-          "zh": "列出文件和目录。"
+          "zh": "列出文件和目录。",
+          "live": {
+            "group": "files-code",
+            "enabled": true
+          }
         },
         {
           "name": "find_files",
           "status": "✅",
           "en": "Finds files by path pattern.",
-          "zh": "按路径模式找文件。"
+          "zh": "按路径模式找文件。",
+          "live": {
+            "group": "files-code",
+            "enabled": true
+          }
         },
         {
           "name": "read_file",
           "status": "✅",
           "en": "Reads local files with anchors for later edits.",
-          "zh": "读取文件，并给后续编辑提供锚点。"
+          "zh": "读取文件，并给后续编辑提供锚点。",
+          "live": {
+            "group": "files-code",
+            "enabled": true
+          }
         },
         {
           "name": "search_files",
           "status": "✅",
           "en": "Searches file contents.",
-          "zh": "搜索文件内容。"
+          "zh": "搜索文件内容。",
+          "live": {
+            "group": "files-code",
+            "enabled": true
+          }
         },
         {
           "name": "write_file",
           "status": "✅",
           "en": "Creates new files.",
-          "zh": "创建新文件。"
+          "zh": "创建新文件。",
+          "live": {
+            "group": "files-code",
+            "enabled": true
+          }
         },
         {
           "name": "edit_file",
           "status": "✅",
           "en": "Edits existing files with read anchors.",
-          "zh": "基于锚点编辑已有文件。"
+          "zh": "基于锚点编辑已有文件。",
+          "live": {
+            "group": "files-code",
+            "enabled": true
+          }
         },
         {
           "name": "apply_patch",
           "status": "✅",
           "en": "Applies structured patches.",
-          "zh": "应用结构化补丁。"
+          "zh": "应用结构化补丁。",
+          "live": {
+            "group": "files-code",
+            "enabled": true
+          }
         },
         {
           "name": "undo_last_change",
           "status": "✅",
           "en": "Reverts the latest recorded file change.",
-          "zh": "回滚最近一次记录的文件修改。"
+          "zh": "回滚最近一次记录的文件修改。",
+          "live": {
+            "group": "files-code",
+            "enabled": true
+          }
         },
         {
           "name": "code_symbols",
           "status": "✅",
           "en": "Lists code symbols.",
-          "zh": "列出代码符号。"
+          "zh": "列出代码符号。",
+          "live": {
+            "group": "files-code",
+            "enabled": true
+          }
         },
         {
           "name": "code_references",
           "status": "✅",
           "en": "Finds code references.",
-          "zh": "查找代码引用。"
+          "zh": "查找代码引用。",
+          "live": {
+            "group": "files-code",
+            "enabled": true
+          }
         },
         {
           "name": "code_pattern",
           "status": "✅",
           "en": "Finds structural code patterns.",
-          "zh": "查找代码结构模式。"
+          "zh": "查找代码结构模式。",
+          "live": {
+            "group": "files-code",
+            "enabled": true
+          }
         }
       ]
     },
@@ -353,50 +413,86 @@
         {
           "name": "mineru_pdf_read",
           "status": "✅",
-          "en": "Reads PDFs through MinerU.",
-          "zh": "用 MinerU 读取 PDF。"
+          "en": "Reads PDFs through MinerU precision or tokenless Agent lightweight parsing.",
+          "zh": "用 MinerU 精准解析或免 Token Agent 轻量解析读取 PDF。",
+          "live": {
+            "group": "documents",
+            "enabled": false,
+            "skipReason": "MinerU is an external document ecosystem; enable only when a real MinerU credential and document budget are intentionally being tested."
+          }
         },
         {
           "name": "mineru_image_read",
           "status": "✅",
-          "en": "Reads images through MinerU.",
-          "zh": "用 MinerU 读取图片。"
+          "en": "Reads images through MinerU precision or tokenless Agent lightweight parsing.",
+          "zh": "用 MinerU 精准解析或免 Token Agent 轻量解析读取图片。",
+          "live": {
+            "group": "documents",
+            "enabled": false,
+            "skipReason": "MinerU is an external document ecosystem; enable only when a real MinerU credential and document budget are intentionally being tested."
+          }
         },
         {
           "name": "mineru_doc_read",
           "status": "✅",
-          "en": "Reads document files through MinerU.",
-          "zh": "用 MinerU 读取文档。"
+          "en": "Reads document files through MinerU precision or tokenless Agent lightweight parsing.",
+          "zh": "用 MinerU 精准解析或免 Token Agent 轻量解析读取文档。",
+          "live": {
+            "group": "documents",
+            "enabled": false,
+            "skipReason": "MinerU is an external document ecosystem; enable only when a real MinerU credential and document budget are intentionally being tested."
+          }
         },
         {
           "name": "mineru_ppt_read",
           "status": "✅",
-          "en": "Reads presentations through MinerU.",
-          "zh": "用 MinerU 读取演示文稿。"
+          "en": "Reads presentations through MinerU precision or tokenless Agent lightweight parsing.",
+          "zh": "用 MinerU 精准解析或免 Token Agent 轻量解析读取演示文稿。",
+          "live": {
+            "group": "documents",
+            "enabled": false,
+            "skipReason": "MinerU is an external document ecosystem; enable only when a real MinerU credential and document budget are intentionally being tested."
+          }
         },
         {
           "name": "read_docx",
           "status": "✅",
           "en": "Reads DOCX files.",
-          "zh": "读取 DOCX。"
+          "zh": "读取 DOCX。",
+          "live": {
+            "group": "documents",
+            "enabled": true
+          }
         },
         {
           "name": "write_docx",
           "status": "✅",
           "en": "Writes DOCX files.",
-          "zh": "写入 DOCX。"
+          "zh": "写入 DOCX。",
+          "live": {
+            "group": "documents",
+            "enabled": true
+          }
         },
         {
           "name": "edit_docx",
           "status": "✅",
           "en": "Edits DOCX files.",
-          "zh": "编辑 DOCX。"
+          "zh": "编辑 DOCX。",
+          "live": {
+            "group": "documents",
+            "enabled": true
+          }
         },
         {
           "name": "read_spreadsheet",
           "status": "✅",
           "en": "Reads spreadsheet files.",
-          "zh": "读取表格文件。"
+          "zh": "读取表格文件。",
+          "live": {
+            "group": "documents",
+            "enabled": true
+          }
         }
       ]
     },
@@ -410,49 +506,81 @@
           "name": "http_probe",
           "status": "✅",
           "en": "Checks a URL quickly.",
-          "zh": "快速探测 URL。"
+          "zh": "快速探测 URL。",
+          "live": {
+            "group": "network-api",
+            "enabled": true
+          }
         },
         {
           "name": "http_request",
           "status": "✅",
           "en": "Sends one HTTP request.",
-          "zh": "发送一次 HTTP 请求。"
+          "zh": "发送一次 HTTP 请求。",
+          "live": {
+            "group": "network-api",
+            "enabled": true
+          }
         },
         {
           "name": "http_session",
           "status": "✅",
           "en": "Manages reusable HTTP session state.",
-          "zh": "管理可复用 HTTP 会话状态。"
+          "zh": "管理可复用 HTTP 会话状态。",
+          "live": {
+            "group": "network-api",
+            "enabled": true
+          }
         },
         {
           "name": "http_suite",
           "status": "✅",
           "en": "Runs a small HTTP check suite.",
-          "zh": "运行一组轻量 HTTP 检查。"
+          "zh": "运行一组轻量 HTTP 检查。",
+          "live": {
+            "group": "network-api",
+            "enabled": true
+          }
         },
         {
           "name": "network_trace",
           "status": "✅",
           "en": "Records network evidence.",
-          "zh": "记录网络取证。"
+          "zh": "记录网络取证。",
+          "live": {
+            "group": "network-api",
+            "enabled": true
+          }
         },
         {
           "name": "openapi_inspect",
           "status": "✅",
           "en": "Inspects OpenAPI documents.",
-          "zh": "检查 OpenAPI 文档。"
+          "zh": "检查 OpenAPI 文档。",
+          "live": {
+            "group": "network-api",
+            "enabled": true
+          }
         },
         {
           "name": "openapi_lint",
           "status": "✅",
           "en": "Lints OpenAPI documents.",
-          "zh": "校验 OpenAPI 文档。"
+          "zh": "校验 OpenAPI 文档。",
+          "live": {
+            "group": "network-api",
+            "enabled": true
+          }
         },
         {
           "name": "download_url",
           "status": "✅",
           "en": "Downloads a URL into a file.",
-          "zh": "下载 URL 到文件。"
+          "zh": "下载 URL 到文件。",
+          "live": {
+            "group": "network-api",
+            "enabled": true
+          }
         }
       ]
     },
@@ -466,55 +594,91 @@
           "name": "session_list",
           "status": "✅",
           "en": "Lists saved sessions.",
-          "zh": "列出历史会话。"
+          "zh": "列出历史会话。",
+          "live": {
+            "group": "history-trace",
+            "enabled": true
+          }
         },
         {
           "name": "session_read",
           "status": "✅",
           "en": "Reads one saved session.",
-          "zh": "读取一个历史会话。"
+          "zh": "读取一个历史会话。",
+          "live": {
+            "group": "history-trace",
+            "enabled": true
+          }
         },
         {
           "name": "session_search",
           "status": "✅",
           "en": "Searches session history.",
-          "zh": "搜索历史会话。"
+          "zh": "搜索历史会话。",
+          "live": {
+            "group": "history-trace",
+            "enabled": true
+          }
         },
         {
           "name": "session_final_output",
           "status": "✅",
           "en": "Reads a session's final output.",
-          "zh": "读取会话最终输出。"
+          "zh": "读取会话最终输出。",
+          "live": {
+            "group": "history-trace",
+            "enabled": true
+          }
         },
         {
           "name": "tool_artifact_read",
           "status": "✅",
           "en": "Reads stored tool artifacts.",
-          "zh": "读取工具产物。"
+          "zh": "读取工具产物。",
+          "live": {
+            "group": "history-trace",
+            "enabled": true
+          }
         },
         {
           "name": "runtime_event_search",
           "status": "✅",
           "en": "Searches runtime events.",
-          "zh": "搜索运行事件。"
+          "zh": "搜索运行事件。",
+          "live": {
+            "group": "history-trace",
+            "enabled": true
+          }
         },
         {
           "name": "change_record_read",
           "status": "✅",
           "en": "Reads recorded changes.",
-          "zh": "读取变更记录。"
+          "zh": "读取变更记录。",
+          "live": {
+            "group": "history-trace",
+            "enabled": true
+          }
         },
         {
           "name": "agent_trace_list",
           "status": "✅",
           "en": "Lists agent traces.",
-          "zh": "列出 agent trace。"
+          "zh": "列出 agent trace。",
+          "live": {
+            "group": "history-trace",
+            "enabled": true
+          }
         },
         {
           "name": "agent_trace_read",
           "status": "✅",
           "en": "Reads one agent trace.",
-          "zh": "读取一个 agent trace。"
+          "zh": "读取一个 agent trace。",
+          "live": {
+            "group": "history-trace",
+            "enabled": true
+          }
         }
       ]
     },
@@ -528,103 +692,171 @@
           "name": "todo_write",
           "status": "✅",
           "en": "Updates the visible todo list.",
-          "zh": "更新可见 todo。"
+          "zh": "更新可见 todo。",
+          "live": {
+            "group": "files-code",
+            "enabled": true
+          }
         },
         {
           "name": "task",
           "status": "✅",
           "en": "Creates a delegated task with a selected subagent type.",
-          "zh": "创建带 subagent 类型的委派任务。"
+          "zh": "创建带 subagent 类型的委派任务。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "task_create",
           "status": "✅",
           "en": "Creates a persistent task.",
-          "zh": "创建持久任务。"
+          "zh": "创建持久任务。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "task_get",
           "status": "✅",
           "en": "Reads one task.",
-          "zh": "读取一个任务。"
+          "zh": "读取一个任务。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "task_list",
           "status": "✅",
           "en": "Lists tasks.",
-          "zh": "列出任务。"
+          "zh": "列出任务。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "task_update",
           "status": "✅",
           "en": "Updates task state.",
-          "zh": "更新任务状态。"
+          "zh": "更新任务状态。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "claim_task",
           "status": "✅",
           "en": "Claims a task and binds a worktree.",
-          "zh": "认领任务并绑定 worktree。"
+          "zh": "认领任务并绑定 worktree。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "coordination_policy",
           "status": "✅",
           "en": "Updates team coordination policy.",
-          "zh": "更新团队协作策略。"
+          "zh": "更新团队协作策略。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "spawn_teammate",
           "status": "✅",
           "en": "Starts a teammate execution.",
-          "zh": "启动队友执行。"
+          "zh": "启动队友执行。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "list_teammates",
           "status": "✅",
           "en": "Lists teammates.",
-          "zh": "列出队友。"
+          "zh": "列出队友。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "send_message",
           "status": "✅",
           "en": "Sends a message to a teammate.",
-          "zh": "给队友发消息。"
+          "zh": "给队友发消息。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "read_inbox",
           "status": "✅",
           "en": "Reads Lead inbox messages.",
-          "zh": "读取 Lead inbox。"
+          "zh": "读取 Lead inbox。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "broadcast",
           "status": "✅",
           "en": "Broadcasts a message to teammates.",
-          "zh": "向队友广播消息。"
+          "zh": "向队友广播消息。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "shutdown_request",
           "status": "✅",
           "en": "Requests teammate shutdown.",
-          "zh": "请求队友关闭。"
+          "zh": "请求队友关闭。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "shutdown_response",
           "status": "✅",
           "en": "Responds to a shutdown request.",
-          "zh": "响应关闭请求。"
+          "zh": "响应关闭请求。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "plan_approval",
           "status": "✅",
           "en": "Records plan approval state.",
-          "zh": "记录计划批准状态。"
+          "zh": "记录计划批准状态。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "idle",
           "status": "✅",
           "en": "Records idle state.",
-          "zh": "记录空闲状态。"
+          "zh": "记录空闲状态。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         }
       ]
     },
@@ -638,67 +870,112 @@
           "name": "worktree_list",
           "status": "✅",
           "en": "Lists worktrees.",
-          "zh": "列出 worktree。"
+          "zh": "列出 worktree。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "worktree_get",
           "status": "✅",
           "en": "Reads one worktree record.",
-          "zh": "读取一个 worktree 记录。"
+          "zh": "读取一个 worktree 记录。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "worktree_events",
           "status": "✅",
           "en": "Reads worktree events.",
-          "zh": "读取 worktree 事件。"
+          "zh": "读取 worktree 事件。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "worktree_create",
           "status": "✅",
           "en": "Creates an isolated worktree.",
-          "zh": "创建隔离 worktree。"
+          "zh": "创建隔离 worktree。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "worktree_keep",
           "status": "✅",
           "en": "Marks a worktree to keep.",
-          "zh": "标记保留 worktree。"
+          "zh": "标记保留 worktree。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "worktree_remove",
           "status": "✅",
           "en": "Removes a worktree.",
-          "zh": "删除 worktree。"
+          "zh": "删除 worktree。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": false,
+            "skipReason": "Destructive worktree removal is disabled in the default live ecology pass; enable only for an explicit cleanup test."
+          }
         },
         {
           "name": "run_shell",
           "status": "✅",
           "en": "Runs a foreground shell command.",
-          "zh": "运行前台 shell 命令。"
+          "zh": "运行前台 shell 命令。",
+          "live": {
+            "group": "files-code",
+            "enabled": true
+          }
         },
         {
           "name": "background_run",
           "status": "✅",
           "en": "Starts a background command.",
-          "zh": "启动后台命令。"
+          "zh": "启动后台命令。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "background_check",
           "status": "✅",
           "en": "Reads background command status.",
-          "zh": "查看后台命令状态。"
+          "zh": "查看后台命令状态。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "background_terminate",
           "status": "✅",
           "en": "Terminates a background command.",
-          "zh": "终止后台命令。"
+          "zh": "终止后台命令。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         },
         {
           "name": "load_skill",
           "status": "✅",
           "en": "Loads a local skill package.",
-          "zh": "加载本地 skill 包。"
+          "zh": "加载本地 skill 包。",
+          "live": {
+            "group": "execution-ecology",
+            "enabled": true
+          }
         }
       ]
     }

@@ -2,7 +2,10 @@ export type MineruDocumentCategory = "pdf" | "image" | "doc" | "ppt";
 
 export const MINERU_MAX_FILE_BYTES = 200 * 1024 * 1024;
 export const MINERU_MAX_FILE_MB = 200;
-export const MINERU_MAX_PAGES = 600;
+export const MINERU_MAX_PAGES = 200;
+export const MINERU_AGENT_MAX_FILE_BYTES = 10 * 1024 * 1024;
+export const MINERU_AGENT_MAX_FILE_MB = 10;
+export const MINERU_AGENT_MAX_PAGES = 20;
 
 export const MINERU_PDF_EXTENSIONS = [".pdf"] as const;
 export const MINERU_IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".jp2", ".webp", ".gif", ".bmp"] as const;

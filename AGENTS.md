@@ -251,6 +251,8 @@ Radical does not mean sloppy.
 The architecture should be aggressive, but the implementation must be clean:
 
 - One module should own one responsibility.
+- Common mechanisms must be centralized behind one source of truth; special cases should only hold their real differences.
+- Do not maintain duplicate lists, mirrored config, parallel registries, repeated prompt inventories, or scattered string assembly when a single formal table, registry, protocol surface, or helper can own the shared truth.
 - Main loops schedule; they must not absorb feature details.
 - Protocols define boundaries; implementations plug into them.
 - Prefer explicit contracts over hidden prompt behavior.

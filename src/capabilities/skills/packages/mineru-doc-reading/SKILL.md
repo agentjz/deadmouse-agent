@@ -1,7 +1,7 @@
 ---
 schema_version: skill
 name: mineru-doc-reading
-description: Read .doc and .docx files through MinerU first, with native read_docx preserved as the explicit .docx fallback.
+description: Read .doc and .docx files through MinerU first; tokenless runs use the Agent lightweight API, with native read_docx preserved as the explicit .docx fallback.
 version: 1.0.0
 agent_kinds: lead, teammate
 task_types: research, review, extraction, documentation
@@ -15,6 +15,7 @@ trigger_keywords: doc, docx, word, proposal, contract, report
 Use this skill when the user gives you a Word document and the goal is to read or analyze its content.
 
 1. Call `mineru_doc_read` first for both `.doc` and `.docx`.
-2. For `.docx`, accept the explicit native `read_docx` fallback only when MinerU is unavailable, misconfigured, failing, or unsupported.
-3. Preserve `write_docx` and `edit_docx` for document creation and structured edits.
-4. Work from the extracted Markdown or fallback structure summary instead of raw binary bytes.
+2. When no MinerU token is configured, `mineru_doc_read` can use MinerU Agent lightweight parsing before falling back.
+3. For `.docx`, accept the explicit native `read_docx` fallback only when both MinerU precision parsing and Agent lightweight parsing are unavailable, failing, or unsupported.
+4. Preserve `write_docx` and `edit_docx` for document creation and structured edits.
+5. Work from the extracted Markdown or fallback structure summary instead of raw binary bytes.

@@ -1,7 +1,13 @@
-import { lineNumberAt } from "./files.mjs";
+import { lineNumberAt } from "./files.ts";
+import type { RepoContractFinding, RepoContractScanInput } from "./types.ts";
 
-export async function scanCapabilityManifestFixtures({ contents }) {
-  const findings = [];
+interface ManifestObjectMatch {
+  start: number;
+  text: string;
+}
+
+export async function scanCapabilityManifestFixtures({ contents }: RepoContractScanInput): Promise<RepoContractFinding[]> {
+  const findings: RepoContractFinding[] = [];
   for (const [file, content] of contents) {
     const matches = findManifestObjectLiterals(content);
     for (const match of matches) {
@@ -34,8 +40,8 @@ export async function scanCapabilityManifestFixtures({ contents }) {
   return findings;
 }
 
-function findManifestObjectLiterals(content) {
-  const matches = [];
+function findManifestObjectLiterals(content: string): ManifestObjectMatch[] {
+  const matches: ManifestObjectMatch[] = [];
   const protocolPattern = /protocol\s*:\s*["']kitty\.capability-manifest["']/g;
   for (const match of content.matchAll(protocolPattern)) {
     const protocolIndex = match.index ?? 0;
@@ -51,9 +57,9 @@ function findManifestObjectLiterals(content) {
   return matches;
 }
 
-function findBalancedObjectEnd(content, start) {
+function findBalancedObjectEnd(content: string, start: number): number {
   let depth = 0;
-  let quote;
+  let quote: string | undefined;
   let escaped = false;
   for (let index = start; index < content.length; index += 1) {
     const char = content[index];

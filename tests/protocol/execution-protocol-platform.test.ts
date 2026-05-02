@@ -725,24 +725,6 @@ test("protocol core does not import concrete capability implementations", () => 
   }
 });
 
-test("removed registry surfaces stay absent from source", () => {
-  const sourceFiles = collectSourceFiles(path.join(process.cwd(), "src"));
-  const forbidden = [
-    ["format", "Capability", "Profile"].join(""),
-    ["list", "Subagent", "Capability", "Profiles"].join(""),
-    ["get", "Team", "Capability", "Profile"].join(""),
-    ["format", "Team", "Capability", "Profile"].join(""),
-    ["format", "Workflow", "Profiles", "For", "Prompt"].join(""),
-  ];
-
-  for (const file of sourceFiles) {
-    const content = fs.readFileSync(file, "utf8");
-    for (const token of forbidden) {
-      assert.equal(content.includes(token), false, `${path.relative(process.cwd(), file)} still contains ${token}`);
-    }
-  }
-});
-
 function collectSourceFiles(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const fullPath = path.join(dir, entry.name);

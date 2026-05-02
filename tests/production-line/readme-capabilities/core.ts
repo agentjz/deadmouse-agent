@@ -4,27 +4,79 @@ import path from "node:path";
 export const CAPABILITY_ECOLOGY_START = "<!-- capability-ecology:start -->";
 export const CAPABILITY_ECOLOGY_END = "<!-- capability-ecology:end -->";
 
-const README_FILES = {
+type Locale = "en" | "zh";
+
+interface LocalizedText {
+  en: string;
+  zh: string;
+}
+
+interface CapabilityEcologyProfile extends LocalizedText {
+  id: string;
+  status: string;
+}
+
+interface CapabilityEcologyItem extends LocalizedText {
+  name: string;
+  status: string;
+}
+
+interface CapabilityEcologyTool extends LocalizedText {
+  name: string;
+  status: string;
+  live?: {
+    group?: string;
+    enabled?: boolean;
+    skipReason?: string;
+  };
+}
+
+interface CapabilityEcologyCategory<T> {
+  title: LocalizedText;
+  items?: T[];
+  tools?: T[];
+}
+
+interface CapabilityEcologySpec {
+  profiles: CapabilityEcologyProfile[];
+  capabilityCategories: Array<CapabilityEcologyCategory<CapabilityEcologyItem>>;
+  toolCategories: Array<CapabilityEcologyCategory<CapabilityEcologyTool>>;
+}
+
+interface SyncReadmeCapabilitiesOptions {
+  check?: boolean;
+}
+
+interface SyncReadmeCapabilitiesResult {
+  mode: "check" | "write";
+  registeredToolCount: number;
+  staleFiles: string[];
+}
+
+const README_FILES: Record<Locale, string> = {
   en: "README.md",
   zh: "README.zh.md",
 };
 
-export async function syncReadmeCapabilities(root, options = {}) {
+export async function syncReadmeCapabilities(
+  root: string,
+  options: SyncReadmeCapabilitiesOptions = {},
+): Promise<SyncReadmeCapabilitiesResult> {
   const mode = options.check ? "check" : "write";
   const spec = await readCapabilityEcologySpec(root);
   const registeredTools = await listRegisteredTools(root);
   validateCapabilityEcologySpec(spec, registeredTools);
 
-  const generatedByLocale = {
+  const generatedByLocale: Record<Locale, string> = {
     en: renderCapabilityEcology(spec, "en"),
     zh: renderCapabilityEcology(spec, "zh"),
   };
 
-  const staleFiles = [];
+  const staleFiles: string[] = [];
   for (const [locale, relativePath] of Object.entries(README_FILES)) {
     const filePath = path.join(root, relativePath);
     const current = await fs.readFile(filePath, "utf8");
-    const next = replaceGeneratedBlock(current, generatedByLocale[locale]);
+    const next = replaceGeneratedBlock(current, generatedByLocale[locale as Locale]);
     if (next !== current) {
       staleFiles.push(relativePath);
       if (mode === "write") {
@@ -40,24 +92,33 @@ export async function syncReadmeCapabilities(root, options = {}) {
   };
 }
 
-export async function readCapabilityEcologySpec(root) {
+export async function readCapabilityEcologySpec(root: string): Promise<CapabilityEcologySpec> {
   const specPath = path.join(root, "spec", "用户审阅", "capability-ecology.json");
-  return JSON.parse(await fs.readFile(specPath, "utf8"));
+  return parseCapabilityEcologySpec(JSON.parse(await fs.readFile(specPath, "utf8")));
 }
 
-export async function listRegisteredTools(root) {
+export async function listRegisteredTools(root: string): Promise<Set<string>> {
   const catalogPath = path.join(root, "src", "capabilities", "tools", "core", "builtinCatalog.ts");
   const catalog = await fs.readFile(catalogPath, "utf8");
-  const toolVars = [...catalog.matchAll(/defineBuiltinTool\((\w+)/g)].map((match) => match[1]);
-  const imports = new Map();
+  const toolVars = [...catalog.matchAll(/defineBuiltinTool\((\w+)/g)]
+    .map((match) => match[1])
+    .filter((value): value is string => typeof value === "string");
+  const imports = new Map<string, string>();
+
   for (const match of catalog.matchAll(/import\s+\{\s*([^}]+?)\s*\}\s+from\s+"([^"]+)"/gs)) {
-    const source = match[2].replace(/\.js$/, ".ts");
-    for (const importedName of match[1].split(",").map((item) => item.trim()).filter(Boolean)) {
+    const importedNames = match[1];
+    const importedSource = match[2];
+    if (!importedNames || !importedSource) {
+      continue;
+    }
+
+    const source = importedSource.replace(/\.js$/, ".ts");
+    for (const importedName of importedNames.split(",").map((item) => item.trim()).filter(Boolean)) {
       imports.set(importedName, source);
     }
   }
 
-  const tools = new Set();
+  const tools = new Set<string>();
   const catalogDir = path.dirname(catalogPath);
   for (const toolVar of toolVars) {
     const source = imports.get(toolVar);
@@ -68,24 +129,26 @@ export async function listRegisteredTools(root) {
     const sourcePath = path.resolve(catalogDir, source);
     const sourceText = await fs.readFile(sourcePath, "utf8");
     const nameMatch = sourceText.match(new RegExp(`export\\s+const\\s+${escapeRegExp(toolVar)}[\\s\\S]*?name:\\s*"([^"]+)"`));
-    if (!nameMatch) {
+    const toolName = nameMatch?.[1];
+    if (!toolName) {
       throw new Error(`No tool name found for ${toolVar} in ${path.relative(root, sourcePath)}`);
     }
-    tools.add(nameMatch[1]);
+
+    tools.add(toolName);
   }
 
   return tools;
 }
 
-export function validateCapabilityEcologySpec(spec, registeredTools) {
+export function validateCapabilityEcologySpec(spec: CapabilityEcologySpec, registeredTools: Set<string>): void {
   assertArray(spec.profiles, "profiles");
   assertArray(spec.capabilityCategories, "capabilityCategories");
   assertArray(spec.toolCategories, "toolCategories");
 
-  const mappedTools = new Set();
+  const mappedTools = new Set<string>();
   for (const category of spec.toolCategories) {
     assertArray(category.tools, `tool category ${JSON.stringify(category.title)}`);
-    for (const tool of category.tools) {
+    for (const tool of category.tools ?? []) {
       if (mappedTools.has(tool.name)) {
         throw new Error(`Duplicate README tool mapping: ${tool.name}`);
       }
@@ -104,7 +167,7 @@ export function validateCapabilityEcologySpec(spec, registeredTools) {
   }
 }
 
-function renderCapabilityEcology(spec, locale) {
+function renderCapabilityEcology(spec: CapabilityEcologySpec, locale: Locale): string {
   const labels = locale === "zh"
     ? {
         profilesTitle: "内置人格",
@@ -137,7 +200,7 @@ function renderCapabilityEcology(spec, locale) {
     lines.push("", `### ${category.title[locale]}`, "");
     lines.push(`| ${labels.capability} | ${labels.effect} | ${labels.status} |`);
     lines.push("| --- | --- | --- |");
-    for (const item of category.items) {
+    for (const item of category.items ?? []) {
       lines.push(`| ${item.name} | ${item[locale]} | ${item.status} |`);
     }
   }
@@ -146,7 +209,7 @@ function renderCapabilityEcology(spec, locale) {
     lines.push("", `### ${category.title[locale]}`, "");
     lines.push(`| ${labels.tool} | ${labels.effect} | ${labels.status} |`);
     lines.push("| --- | --- | --- |");
-    for (const tool of category.tools) {
+    for (const tool of category.tools ?? []) {
       lines.push(`| \`${tool.name}\` | ${tool[locale]} | ${tool.status} |`);
     }
   }
@@ -155,7 +218,7 @@ function renderCapabilityEcology(spec, locale) {
   return lines.join("\n");
 }
 
-function replaceGeneratedBlock(readme, generated) {
+function replaceGeneratedBlock(readme: string, generated: string): string {
   const startIndex = readme.indexOf(CAPABILITY_ECOLOGY_START);
   const endIndex = readme.indexOf(CAPABILITY_ECOLOGY_END);
   if (startIndex >= 0 && endIndex > startIndex) {
@@ -179,12 +242,28 @@ function replaceGeneratedBlock(readme, generated) {
   return `${frontMatter}\n\n${generated}\n\n${release}`;
 }
 
-function assertArray(value, name) {
+function parseCapabilityEcologySpec(value: unknown): CapabilityEcologySpec {
+  if (!value || typeof value !== "object") {
+    throw new Error("Capability ecology spec must be an object.");
+  }
+
+  const spec = value as Partial<CapabilityEcologySpec>;
+  assertArray(spec.profiles, "profiles");
+  assertArray(spec.capabilityCategories, "capabilityCategories");
+  assertArray(spec.toolCategories, "toolCategories");
+  return {
+    profiles: spec.profiles as CapabilityEcologyProfile[],
+    capabilityCategories: spec.capabilityCategories as Array<CapabilityEcologyCategory<CapabilityEcologyItem>>,
+    toolCategories: spec.toolCategories as Array<CapabilityEcologyCategory<CapabilityEcologyTool>>,
+  };
+}
+
+function assertArray(value: unknown, name: string): asserts value is unknown[] {
   if (!Array.isArray(value)) {
     throw new Error(`Expected ${name} to be an array.`);
   }
 }
 
-function escapeRegExp(value) {
+function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

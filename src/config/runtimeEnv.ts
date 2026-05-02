@@ -60,6 +60,7 @@ export function readMineruRuntimeConfig(): MineruRuntimeConfig {
   return {
     token: (process.env.MINERU_API_TOKEN ?? "").trim(),
     baseUrl: (process.env.MINERU_BASE_URL ?? "https://mineru.net/api/v4").trim(),
+    agentBaseUrl: (process.env.MINERU_AGENT_BASE_URL ?? "https://mineru.net/api/v1").trim(),
     modelVersion: (process.env.MINERU_MODEL_VERSION ?? "vlm").trim(),
     language: (process.env.MINERU_LANGUAGE ?? "ch").trim(),
     enableTable: parseBooleanEnv(process.env.MINERU_ENABLE_TABLE) ?? true,

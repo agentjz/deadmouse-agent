@@ -1,6 +1,6 @@
-import process from "node:process";
+﻿import process from "node:process";
 
-import { syncReadmeCapabilities } from "./readme-capabilities/core.mjs";
+import { syncReadmeCapabilities } from "./readme-capabilities/core.ts";
 
 async function main() {
   const result = await syncReadmeCapabilities(process.cwd(), { check: true });

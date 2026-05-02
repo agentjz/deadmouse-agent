@@ -21,3 +21,32 @@ export interface MineruBatchResult {
   extractedPages?: number;
   totalPages?: number;
 }
+
+export interface MineruAgentParseInput {
+  filePath: string;
+  fileName: string;
+  isOcr: boolean;
+  language?: string;
+  enableTable?: boolean;
+  enableFormula?: boolean;
+}
+
+export interface MineruAgentFileTask {
+  taskId: string;
+  fileUrl: string;
+}
+
+export interface MineruAgentTaskResult {
+  taskId: string;
+  state: string;
+  markdownUrl?: string;
+  errCode?: number;
+  errMsg?: string;
+}
+
+export interface MineruAgentParseResult {
+  taskId: string;
+  state: string;
+  markdown: string;
+  markdownUrl: string;
+}

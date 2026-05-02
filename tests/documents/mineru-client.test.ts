@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import path from "node:path";
 import test from "node:test";
 
 import { MineruClient } from "../../src/integrations/mineru/client.js";
@@ -18,6 +19,7 @@ test("MineruClient creates upload batches with Bearer token and expected request
     {
       token: "mineru-token",
       baseUrl: "https://mineru.net/api/v4",
+      agentBaseUrl: "https://mineru.net/api/v1",
       modelVersion: "vlm",
       language: "ch",
       enableFormula: true,
@@ -77,6 +79,7 @@ test("MineruClient polls batch results until done and returns the matching file 
     {
       token: "mineru-token",
       baseUrl: "https://mineru.net/api/v4",
+      agentBaseUrl: "https://mineru.net/api/v1",
       modelVersion: "vlm",
       language: "ch",
       enableFormula: true,
@@ -130,4 +133,77 @@ test("MineruClient polls batch results until done and returns the matching file 
   assert.equal(result.fileName, "paper.pdf");
   assert.equal(result.state, "done");
   assert.equal(result.fullZipUrl, "https://cdn.example.com/paper.zip");
+});
+
+test("MineruClient parses through the tokenless Agent API", async () => {
+  const requests: Array<{ url: string; init?: RequestInit }> = [];
+  const client = new MineruClient(
+    {
+      token: "",
+      baseUrl: "https://mineru.net/api/v4",
+      agentBaseUrl: "https://mineru.net/api/v1",
+      modelVersion: "vlm",
+      language: "ch",
+      enableFormula: true,
+      enableTable: true,
+      pollIntervalMs: 200,
+      timeoutMs: 10_000,
+    },
+    async (input: unknown, init?: RequestInit) => {
+      requests.push({
+        url: String(input),
+        init,
+      });
+
+      const url = String(input);
+      if (url.endsWith("/agent/parse/file")) {
+        return createJsonResponse({
+          code: 0,
+          msg: "ok",
+          data: {
+            task_id: "agent-task-1",
+            file_url: "https://upload.example.com/agent-task-1",
+          },
+        });
+      }
+
+      if (url === "https://upload.example.com/agent-task-1") {
+        return new Response(null, { status: 200 });
+      }
+
+      if (url.endsWith("/agent/parse/agent-task-1")) {
+        return createJsonResponse({
+          code: 0,
+          msg: "ok",
+          data: {
+            task_id: "agent-task-1",
+            state: "done",
+            markdown_url: "https://cdn.example.com/agent-task-1.md",
+          },
+        });
+      }
+
+      if (url === "https://cdn.example.com/agent-task-1.md") {
+        return new Response("# Agent Result\n\nhello", { status: 200 });
+      }
+
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    },
+  );
+
+  const result = await client.parseWithAgentApi({
+    filePath: path.join(process.cwd(), "package.json"),
+    fileName: "sample.pdf",
+    isOcr: true,
+  });
+
+  assert.match(result.markdown, /Agent Result/);
+  assert.equal(result.taskId, "agent-task-1");
+  assert.equal(result.markdownUrl, "https://cdn.example.com/agent-task-1.md");
+  assert.equal(requests[0]?.url, "https://mineru.net/api/v1/agent/parse/file");
+  assert.equal(requests[0]?.init?.method, "POST");
+  assert.equal(String(requests[1]?.url), "https://upload.example.com/agent-task-1");
+  assert.equal(requests[1]?.init?.method, "PUT");
+  assert.equal(String(requests[2]?.url), "https://mineru.net/api/v1/agent/parse/agent-task-1");
+  assert.equal(String(requests[3]?.url), "https://cdn.example.com/agent-task-1.md");
 });

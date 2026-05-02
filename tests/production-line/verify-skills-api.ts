@@ -2,14 +2,15 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { runAgentTurn } from "../.test-build/src/agent/runTurn.js";
-import { InProcessSessionStore } from "../.test-build/src/agent/session.js";
-import { resolveRuntimeConfig } from "../.test-build/src/config/store.js";
-import { loadProjectContext } from "../.test-build/src/context/projectContext.js";
-import { buildSkillRuntimeState } from "../.test-build/src/capabilities/skills/state.js";
-import { createToolRegistry } from "../.test-build/src/capabilities/tools/index.js";
+import { runAgentTurn } from "../../src/agent/runTurn.js";
+import { InProcessSessionStore } from "../../src/agent/session.js";
+import { buildSkillRuntimeState } from "../../src/capabilities/skills/state.js";
+import { createToolRegistry } from "../../src/capabilities/tools/index.js";
+import { resolveRuntimeConfig } from "../../src/config/store.js";
+import { loadProjectContext } from "../../src/context/projectContext.js";
+import type { StoredMessage } from "../../src/types.js";
 
-async function main() {
+async function main(): Promise<void> {
   const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "Kitty-skills-"));
   await writeSkill(workspace);
 
@@ -27,8 +28,8 @@ async function main() {
   };
   const sessionStore = new InProcessSessionStore();
   const session = await sessionStore.create(workspace);
-  const toolCalls = [];
-  const statusUpdates = [];
+  const toolCalls: string[] = [];
+  const statusUpdates: string[] = [];
   const initialProjectContext = await loadProjectContext(workspace);
   const initialRuntime = buildSkillRuntimeState({
     skills: initialProjectContext.skills,
@@ -59,13 +60,7 @@ async function main() {
     skills: projectContext.skills,
     session: result.session,
   });
-  const machineSkillReminderSeen = result.session.messages.some(
-    (message) =>
-      message.role === "user" &&
-      typeof message.content === "string" &&
-      message.content.startsWith("[internal]") &&
-      /skill\(s\)|load skill|required skill/i.test(message.content),
-  );
+  const machineSkillReminderSeen = result.session.messages.some(isMachineSkillReminder);
 
   const summary = {
     workspace,
@@ -96,7 +91,7 @@ async function main() {
   }
 }
 
-async function writeSkill(root) {
+async function writeSkill(root: string): Promise<void> {
   const skillDir = path.join(root, "skills", "docx-review");
   await fs.mkdir(skillDir, { recursive: true });
   await fs.writeFile(
@@ -122,7 +117,14 @@ async function writeSkill(root) {
   );
 }
 
-main().catch((error) => {
+function isMachineSkillReminder(message: StoredMessage): boolean {
+  return message.role === "user" &&
+    typeof message.content === "string" &&
+    message.content.startsWith("[internal]") &&
+    /skill\(s\)|load skill|required skill/i.test(message.content);
+}
+
+main().catch((error: unknown) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
 });

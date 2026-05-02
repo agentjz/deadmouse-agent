@@ -74,6 +74,7 @@ export function createTestRuntimeConfig(root: string): RuntimeConfig {
     mineru: {
       token: "test-mineru-token",
       baseUrl: "https://mineru.net/api/v4",
+      agentBaseUrl: "https://mineru.net/api/v1",
       modelVersion: "vlm",
       language: "ch",
       enableTable: true,
