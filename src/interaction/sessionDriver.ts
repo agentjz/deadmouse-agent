@@ -11,6 +11,15 @@ import type { RuntimeConfig, SessionRecord } from "../types.js";
 import { defaultInteractiveExitGuard, type InteractiveExitGuard, type InteractiveExitProcess } from "./exitGuard.js";
 import { handleLocalCommand, type LocalCommandResult } from "./localCommands.js";
 import type { InteractionShell } from "./shell.js";
+import type { RegisteredTool } from "../capabilities/tools/core/types.js";
+import type { PromptRuntimeState } from "../agent/prompt/types.js";
+
+export interface InteractiveTurnContext {
+  cwd?: string;
+  stateRootDir?: string;
+  extraTools?: readonly RegisteredTool[];
+  runtimePromptState?: Partial<PromptRuntimeState>;
+}
 
 export interface InteractiveSessionDriverOptions {
   cwd: string;
@@ -21,6 +30,7 @@ export interface InteractiveSessionDriverOptions {
   exitGuard?: InteractiveExitGuard;
   runTurn?: HostManagedTurnRunner;
   localCommandHandler?: typeof handleLocalCommand;
+  turnContextProvider?: (session: SessionRecord, input: string) => Promise<InteractiveTurnContext>;
 }
 
 export class InteractiveSessionDriver {
@@ -266,15 +276,19 @@ export class InteractiveSessionDriver {
     });
 
     try {
+      const turnContext = await this.options.turnContextProvider?.(this.session, input);
       const outcome = await runHostTurn({
         host: "interactive",
         input,
-        cwd: this.options.cwd,
+        cwd: turnContext?.cwd ?? this.options.cwd,
+        stateRootDir: turnContext?.stateRootDir,
         config: this.options.config,
         session: this.session,
         sessionStore: this.options.sessionStore,
         abortSignal: controller.signal,
         callbacks: turnDisplay.callbacks,
+        extraTools: turnContext?.extraTools,
+        runtimePromptState: turnContext?.runtimePromptState,
       }, {
         runTurn: this.options.runTurn,
       });

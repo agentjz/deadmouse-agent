@@ -2,6 +2,8 @@ import type { AgentIdentity } from "../types.js";
 
 export interface PromptRuntimeState {
   identity?: AgentIdentity;
+  mode?: "agent" | "spec";
+  extraStaticBlocks?: string[];
   taskSummary?: string;
   teamSummary?: string;
   worktreeSummary?: string;

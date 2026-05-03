@@ -9,7 +9,9 @@ import { registerConfigCommands } from "./commands/config.js";
 import { registerDoctorCommand } from "./commands/doctor.js";
 import { registerProjectCommands } from "./commands/project.js";
 import { registerRegressionCommands } from "./commands/regression.js";
+import { registerAgentCommand } from "./commands/agent.js";
 import { registerSessionCommands } from "./commands/session.js";
+import { registerSpecCommand } from "./commands/spec.js";
 import { registerWorkerCommands } from "./commands/worker.js";
 import { writeStderr, writeStdout, writeStdoutLine } from "../utils/stdio.js";
 import { registerTelegramCommands } from "../telegram/cli.js";
@@ -46,6 +48,16 @@ export function buildCliProgram(dependencies: CliProgramDependencies = {}): Comm
       writeStdoutLine(packageJson.version);
     });
 
+  registerAgentCommand(program, {
+    getCliOverrides,
+    resolveRuntime,
+    dependencies,
+  });
+  registerSpecCommand(program, {
+    getCliOverrides,
+    resolveRuntime,
+    dependencies,
+  });
   registerSessionCommands(program, {
     getCliOverrides,
     resolveRuntime,

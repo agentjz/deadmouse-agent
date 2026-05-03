@@ -125,6 +125,11 @@ export async function runAgentTurn(options: RunTurnOptions): Promise<RunTurnResu
           mcpConfig: options.config.mcp,
         },
       );
+      const turnRuntimeState = {
+        ...runtimeState,
+        ...(options.runtimePromptState ?? {}),
+        identity,
+      };
       const skillRuntimeState = buildSkillRuntimeState({
         skills: projectContext.skills,
         session,
@@ -136,7 +141,7 @@ export async function runAgentTurn(options: RunTurnOptions): Promise<RunTurnResu
         taskState: session.taskState,
         todoItems: session.todoItems,
         verificationState: session.verificationState,
-        runtimeState,
+        runtimeState: turnRuntimeState,
         skillRuntimeState,
         checkpoint: session.checkpoint,
         acceptanceState: session.acceptanceState,
@@ -155,13 +160,13 @@ export async function runAgentTurn(options: RunTurnOptions): Promise<RunTurnResu
         ? orderToolEntriesForLead(toolRegistry.entries, {
             input: options.input,
             objective: session.taskState?.objective,
-            taskSummary: runtimeState.taskSummary,
+            taskSummary: turnRuntimeState.taskSummary,
             activeSkillNames: [...skillRuntimeState.loadedSkillNames],
           }).map((entry) => entry.definition)
         : orderToolDefinitionsForLead(toolRegistry.definitions, {
             input: options.input,
             objective: session.taskState?.objective,
-            taskSummary: runtimeState.taskSummary,
+            taskSummary: turnRuntimeState.taskSummary,
             activeSkillNames: [...skillRuntimeState.loadedSkillNames],
           });
       const turnToolDefinitions = leadVisibleToolDefinitions;

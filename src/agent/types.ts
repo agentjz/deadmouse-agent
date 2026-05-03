@@ -1,6 +1,7 @@
 import type { SessionStoreLike } from "./session/store.js";
 import type { ToolRegistry } from "../capabilities/tools/core/types.js";
 import type { RuntimeConfig, RuntimeTerminalTransition, SessionRecord, ToolCallRecord } from "../types.js";
+import type { PromptRuntimeState } from "./prompt/types.js";
 import type { ToolExecutionResult } from "../types.js";
 
 export interface AgentIdentity {
@@ -70,6 +71,7 @@ export interface RunTurnOptions {
   sessionStore: SessionStoreLike;
   toolRegistry?: ToolRegistry;
   identity?: AgentIdentity;
+  runtimePromptState?: Partial<PromptRuntimeState>;
   yieldAfterToolSteps?: number;
   abortSignal?: AbortSignal;
   callbacks?: AgentCallbacks;

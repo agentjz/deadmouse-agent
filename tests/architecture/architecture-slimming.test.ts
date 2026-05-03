@@ -123,3 +123,32 @@ test("concrete capability ecosystems stay under the capability root", () => {
     ["core", "index.ts", "packages"],
   );
 });
+
+test("spec mode keeps domain state separate from capability tools", () => {
+  const sourceRoot = path.resolve(process.cwd(), "src");
+  const specRoot = path.join(sourceRoot, "spec");
+  const specToolPath = path.join(sourceRoot, "capabilities", "tools", "packages", "spec", "specTools.ts");
+  const specToolDir = path.dirname(specToolPath);
+
+  assert.equal(fs.existsSync(specRoot), true);
+  assert.equal(fs.existsSync(specToolPath), true);
+  assert.ok(countLines(fs.readFileSync(specToolPath, "utf8")) <= 80);
+  assert.equal(fs.existsSync(path.join(specRoot, "tools.ts")), false);
+  assert.equal(fs.existsSync(path.join(specRoot, "interactive.ts")), false);
+  assert.equal(fs.existsSync(path.join(specRoot, "oneShot.ts")), false);
+  assert.equal(fs.existsSync(path.join(sourceRoot, "capabilities", "spec")), false);
+  assert.deepEqual(
+    [
+      "checkpointTools.ts",
+      "discoveryTools.ts",
+      "documentTools.ts",
+      "lifecycleTools.ts",
+      "shared.ts",
+      "specTools.ts",
+      "stateTools.ts",
+      "taskTools.ts",
+    ].every((file) => fs.existsSync(path.join(specToolDir, file))),
+    true,
+  );
+  assert.doesNotMatch(fs.readFileSync(path.join(specRoot, "store.ts"), "utf8"), /capabilities[\\/]/);
+});

@@ -39,6 +39,7 @@
     "verify:runtime-working-memory-api": "npm run test:build && node --import tsx tests/production-line/verify-runtime-working-memory-api.ts",
     "verify:runtime-session-memory-api": "npm run test:build && node --import tsx tests/production-line/verify-runtime-session-memory-api.ts",
     "verify:runtime-checkpoint-api": "npm run test:build && tsx tests/production-line/verify-runtime-checkpoint-api.ts",
+    "verify:spec-mode-api": "npm run test:build && node --import tsx tests/production-line/verify-spec-mode-api.ts",
     "verify:runtime-observability-api": "npm run test:build && tsx tests/production-line/verify-runtime-observability-api.ts",
     "verify:mineru-documents-api": "npm run test:build && tsx tests/production-line/verify-mineru-documents-api.ts",
     "sync": "tsx tests/production-line/sync-generated.ts",

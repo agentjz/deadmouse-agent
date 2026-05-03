@@ -3,6 +3,7 @@ import type { RunTurnResult, AgentCallbacks, AgentIdentity } from "../agent/type
 import type { SessionStoreLike } from "../agent/session.js";
 import type { RegisteredTool, ToolRegistry } from "../capabilities/tools/core/types.js";
 import type { RuntimeConfig, SessionRecord } from "../types.js";
+import type { PromptRuntimeState } from "../agent/prompt/types.js";
 
 export interface HostToolRegistryOptions {
   extraTools?: readonly RegisteredTool[];
@@ -21,6 +22,7 @@ export interface HostTurnOptions {
   callbacks?: AgentCallbacks;
   abortSignal?: AbortSignal;
   identity?: AgentIdentity;
+  runtimePromptState?: Partial<PromptRuntimeState>;
   extraTools?: readonly RegisteredTool[];
 }
 

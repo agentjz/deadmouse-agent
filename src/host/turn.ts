@@ -88,6 +88,7 @@ export async function runHostTurn(
       callbacks: options.callbacks,
       toolRegistry,
       identity: options.identity ?? DEFAULT_IDENTITY,
+      runtimePromptState: options.runtimePromptState,
     });
     dependencies.onRunTurnStarted?.();
     const result = await resultPromise;

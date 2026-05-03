@@ -22,8 +22,10 @@ export function writeCliInteractiveIntro(options: {
   cwd: string;
   session: Pick<SessionRecord, "id">;
   output: ShellOutputPort;
+  mode?: "agent" | "spec";
 }): void {
   options.output.plain(chalk.bold(chalk.greenBright(renderKittyBanner())));
+  options.output.dim(`mode: ${options.mode ?? "agent"}`);
   options.output.dim(`session: ${options.session.id}`);
   options.output.dim(`cwd: ${options.cwd}`);
   options.output.dim("Capabilities: unified protocol surface (use /runtime to inspect current exposure)");

@@ -24,6 +24,7 @@ export type ToolGovernanceSpecialty =
   | "history"
   | "messaging"
   | "shell"
+  | "spec"
   | "task"
   | "trace"
   | "team"

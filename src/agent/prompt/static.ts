@@ -15,6 +15,7 @@ export function buildStaticPromptBlocks(input: StaticPromptInput): string[] {
       "Identity / role contract",
       buildIdentityContract(input.config, input.runtimeState),
     ),
+    ...(input.runtimeState.extraStaticBlocks ?? []),
     formatPromptBlock("Work loop contract", buildWorkLoopContract(input.runtimeState)),
     formatPromptBlock("Prompt boundary contract", buildPromptBoundaryContract()),
     formatPromptBlock(DILIGENCE_BLOCK_TITLE, buildDiligenceContract()),
