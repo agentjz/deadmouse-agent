@@ -166,8 +166,8 @@ test("web HTTP file endpoints create, read, write, rename, and reject unsafe pat
   assert.match((await unsafe.json() as { error: string }).error, /outside the project root/);
 });
 
-test("web writes participate in runtime read_file and edit_file identity semantics", async (t) => {
-  const root = await createTempWorkspace("web-runtime-identity", t);
+test("web writes participate in runtime read_file and edit_file target-text semantics", async (t) => {
+  const root = await createTempWorkspace("web-runtime-edit-target", t);
   const target = path.join(root, "story.txt");
   await fs.writeFile(target, "alpha\nbeta\ngamma\n", "utf8");
   const registry = createToolRegistry();
@@ -176,30 +176,24 @@ test("web writes participate in runtime read_file and edit_file identity semanti
     "read_file",
     JSON.stringify({ path: "story.txt" }),
     context,
-  )).output) as {
-    identity: Record<string, unknown>;
-    anchors: Array<Record<string, unknown>>;
-  };
-  const betaAnchor = firstRead.anchors.find((anchor) => anchor.line === 2);
-  assert(betaAnchor);
+  )).output) as { content: string };
+  assert.match(firstRead.content, /2 \| beta/);
 
   await writeProjectFile(root, "story.txt", "alpha changed\nbeta\ngamma\n");
   const secondRead = JSON.parse((await registry.execute(
     "read_file",
     JSON.stringify({ path: "story.txt" }),
     context,
-  )).output) as { identity: Record<string, unknown> };
-
-  assert.notEqual(secondRead.identity.sha256, firstRead.identity.sha256);
+  )).output) as { content: string };
+  assert.match(secondRead.content, /alpha changed/);
   const edit = await registry.execute(
     "edit_file",
     JSON.stringify({
       path: "story.txt",
-      expected_identity: firstRead.identity,
       edits: [{
-        anchor: betaAnchor,
         old_string: "beta",
         new_string: "BETA",
+        line: 2,
       }],
     }),
     context,
@@ -213,16 +207,15 @@ test("web writes participate in runtime read_file and edit_file identity semanti
       "edit_file",
       JSON.stringify({
         path: "story.txt",
-        expected_identity: firstRead.identity,
         edits: [{
-          anchor: betaAnchor,
-          old_string: "beta",
+          old_string: "beta\n",
           new_string: "BETA",
+          line: 2,
         }],
       }),
       context,
     ),
-    /targeted line changed/i,
+    /could not find edit/i,
   );
 });
 

@@ -4,8 +4,6 @@ import { inspectTextFile } from "../../core/fileIntrospection.js";
 import { findPathSuggestions } from "../../core/pathSuggestions.js";
 import { toToolRelativePath } from "../../core/pathDisplay.js";
 import { okResult, parseArgs, readOptionalNumber, readString } from "../../core/shared.js";
-import { buildFileEditIdentity } from "./editIdentity.js";
-import { buildReadFileAnchors } from "./readFileAnchors.js";
 import type { RegisteredTool } from "../../core/types.js";
 
 interface ReadWindow {
@@ -19,7 +17,7 @@ export const readFileTool: RegisteredTool = {
     type: "function",
     function: {
       name: "read_file",
-      description: "Read a local text file from the local filesystem. Returns numbered lines, continuation metadata, and a stable file identity with line anchors for follow-up edit_file calls. Use path/offset/limit only; offset is a 1-based line number. This is not for webpage content or history artifacts.",
+      description: "Read a local text file from the local filesystem. Returns numbered lines and a continuation pointer. Use path/offset/limit only; offset is a 1-based line number. This is not for webpage content or history artifacts.",
       parameters: {
         type: "object",
         properties: {
@@ -102,7 +100,6 @@ export const readFileTool: RegisteredTool = {
     const selected = lines.slice(readWindow.start, fittedEndExclusive).join("\n");
     const content = formatFileWithLineNumbers(selected, readWindow.start + 1);
     const hasMore = fittedEndExclusive < lines.length;
-    const identity = buildFileEditIdentity(resolved, inspected.content ?? "");
 
     return okResult(
       JSON.stringify(
@@ -115,8 +112,6 @@ export const readFileTool: RegisteredTool = {
           startLine: readWindow.start + 1,
           endLine: fittedEndExclusive === 0 ? 0 : fittedEndExclusive,
           truncated: hasMore,
-          identity,
-          anchors: buildReadFileAnchors(resolved, lines.slice(readWindow.start, fittedEndExclusive), readWindow.start + 1),
           content,
           continuation: hasMore
             ? {

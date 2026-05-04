@@ -49,7 +49,7 @@ function createBlockedToolEntry(): Pick<ToolRegistryEntry, "name" | "governance"
   };
 }
 
-test("read_file emits an identity, edit_file uses target anchors, and unrelated file changes do not block edits", async (t) => {
+test("read_file returns focused content, edit_file uses target text, and unrelated file changes do not block edits", async (t) => {
   const root = await createTempWorkspace("machine-identity", t);
   const filePath = path.join(root, "story.txt");
   await fs.writeFile(filePath, "alpha\nbeta\ngamma\n", "utf8");
@@ -63,13 +63,9 @@ test("read_file emits an identity, edit_file uses target anchors, and unrelated 
     makeToolContext(root, root) as never,
   );
   const readPayload = JSON.parse(readResult.output) as Record<string, unknown>;
-  const identity = readPayload.identity as Record<string, unknown>;
-  const anchors = readPayload.anchors as Array<Record<string, unknown>>;
-  const betaAnchor = anchors.find((anchor) => anchor.line === 2);
-
-  assert.equal(typeof identity.sha256, "string");
-  assert.equal(identity.path, filePath);
-  assert.ok(betaAnchor);
+  assert.match(String(readPayload.content ?? ""), /2 \| beta/);
+  assert.equal(Object.hasOwn(readPayload, "identity"), false);
+  assert.equal(Object.hasOwn(readPayload, "anchors"), false);
   assert.deepEqual(readResult.metadata?.protocol?.phases, ["prepare", "execute", "finalize"]);
   assert.equal(readResult.metadata?.protocol?.policy, "parallel");
 
@@ -78,12 +74,11 @@ test("read_file emits an identity, edit_file uses target anchors, and unrelated 
     "edit_file",
     JSON.stringify({
       path: "story.txt",
-      expected_identity: identity,
       edits: [
         {
-          anchor: betaAnchor,
           old_string: "beta",
           new_string: "BETA",
+          line: 2,
         },
       ],
     }),
@@ -92,7 +87,8 @@ test("read_file emits an identity, edit_file uses target anchors, and unrelated 
   const editPayload = JSON.parse(editResult.output) as Record<string, unknown>;
 
   assert.equal(editResult.ok, true);
-  assert.equal(editPayload.identityChangedBeforeEdit, true);
+  assert.equal(Object.hasOwn(editPayload, "identityChangedBeforeEdit"), false);
+  assert.equal(Object.hasOwn(editPayload, "absoluteChangedPaths"), false);
   assert.deepEqual(editResult.metadata?.protocol?.phases, ["prepare", "execute", "finalize"]);
   assert.equal(editResult.metadata?.protocol?.policy, "sequential");
   assert.equal(await fs.readFile(filePath, "utf8"), "alpha\nBETA\nGAMMA\n");
@@ -104,23 +100,22 @@ test("read_file emits an identity, edit_file uses target anchors, and unrelated 
         "edit_file",
         JSON.stringify({
           path: "story.txt",
-          expected_identity: identity,
           edits: [
             {
-              anchor: betaAnchor,
-              old_string: "beta",
+              old_string: "beta\n",
               new_string: "BETA",
+              line: 2,
             },
           ],
         }),
         makeToolContext(root, root) as never,
       ),
-    /targeted line changed/i,
+    /could not find edit/i,
   );
 });
 
-test("write_file blocks overwriting existing files during prepare and points the model back to edit_file", async (t) => {
-  const root = await createTempWorkspace("machine-write-guard", t);
+test("write_file can overwrite existing files and records the change instead of blocking speed", async (t) => {
+  const root = await createTempWorkspace("machine-write-overwrite", t);
   await fs.writeFile(path.join(root, "existing.txt"), "old\n", "utf8");
 
   const registry = createToolRegistry();
@@ -134,17 +129,15 @@ test("write_file blocks overwriting existing files during prepare and points the
   );
   const payload = JSON.parse(result.output) as Record<string, unknown>;
 
-  assert.equal(result.ok, false);
-  assert.equal(payload.code, "WRITE_EXISTING_FILE_BLOCKED");
-  assert.match(String(payload.hint ?? ""), /edit_file/i);
-  assert.equal(result.metadata?.protocol?.status, "blocked");
-  assert.deepEqual(result.metadata?.protocol?.phases, ["prepare", "finalize"]);
-  assert.equal(result.metadata?.protocol?.blockedIn, "prepare");
-  assert.equal(result.metadata?.protocol?.guardCode, "WRITE_EXISTING_FILE_BLOCKED");
+  assert.equal(result.ok, true);
+  assert.equal(payload.existed, true);
+  assert.match(String(payload.diff ?? ""), /\+ new/);
+  assert.equal(await fs.readFile(path.join(root, "existing.txt"), "utf8"), "new\n");
+  assert.equal(result.metadata?.protocol?.status, "completed");
 });
 
-test("run_shell blocks direct shell file reads and routes them back to read_file", async (t) => {
-  const root = await createTempWorkspace("machine-shell-guard", t);
+test("run_shell allows direct shell reads when the model chooses that fast route", async (t) => {
+  const root = await createTempWorkspace("machine-shell-read", t);
   await fs.writeFile(path.join(root, "notes.txt"), "alpha\n", "utf8");
 
   const registry = createToolRegistry();
@@ -157,12 +150,10 @@ test("run_shell blocks direct shell file reads and routes them back to read_file
   );
   const payload = JSON.parse(result.output) as Record<string, unknown>;
 
-  assert.equal(result.ok, false);
-  assert.equal(payload.code, "SHELL_FILE_READ_BLOCKED");
-  assert.match(String(payload.hint ?? ""), /read_file/i);
-  assert.equal(result.metadata?.protocol?.status, "blocked");
-  assert.deepEqual(result.metadata?.protocol?.phases, ["prepare", "finalize"]);
-  assert.equal(result.metadata?.protocol?.blockedIn, "prepare");
+  assert.equal(result.ok, true);
+  assert.equal(payload.exitCode, 0);
+  assert.match(String(payload.output ?? ""), /alpha/);
+  assert.equal(result.metadata?.protocol?.status, "completed");
 });
 
 test("blocked tool results include a factual hint without a strategy next step", async () => {

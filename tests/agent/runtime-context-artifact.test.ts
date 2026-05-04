@@ -181,16 +181,15 @@ test("runtime context externalizes large tool results for continuation and prese
 
   const continuedToolMessage = continuationRequest?.messages.find((message) => message.role === "tool");
   assert.ok(continuedToolMessage);
-  assert.match(String(continuedToolMessage?.content ?? ""), /"externalized"\s*:\s*true/);
-  assert.match(String(continuedToolMessage?.content ?? ""), /"storagePath"\s*:/);
+  assert.match(String(continuedToolMessage?.content ?? ""), /result externalized/);
+  assert.match(String(continuedToolMessage?.content ?? ""), /artifact:/);
   assert.doesNotMatch(String(continuedToolMessage?.content ?? ""), /ROUND1-LARGE-ONE::/);
 
   const saved = await sessionStore.load(result.session.id);
   const storedToolMessage = saved.messages.find((message) => message.role === "tool" && message.name === "emit_large_one");
   assert.ok(storedToolMessage);
 
-  const storedPayload = parseMessageJson(storedToolMessage as StoredMessage);
-  const storagePath = readStoragePath(storedPayload);
+  const storagePath = readStoragePath(storedToolMessage as StoredMessage);
   assert.ok(storagePath);
   assert.equal(await fs.readFile(resolveArtifactPath(root, storagePath), "utf8"), buildLargeToolOutput(LARGE_MARKER_ONE));
 });
@@ -271,13 +270,13 @@ test("runtime context keeps externalized tool previews across compression and re
   assert.equal((built.promptMetrics?.hotspots?.length ?? 0) > 0, true);
   const compressedToolMessage = built.messages.find((message) => message.role === "tool");
   assert.ok(compressedToolMessage);
-  assert.match(String(compressedToolMessage?.content ?? ""), /"externalized"\s*:\s*true/);
-  assert.match(String(compressedToolMessage?.content ?? ""), /"storagePath"\s*:/);
+  assert.match(String(compressedToolMessage?.content ?? ""), /result externalized/);
+  assert.match(String(compressedToolMessage?.content ?? ""), /artifact:/);
 
   const shrunk = shrinkMessagesForContextLimit(built.messages);
   const shrunkToolMessage = shrunk.find((message) => message.role === "tool");
   assert.ok(shrunkToolMessage);
-  assert.match(String(shrunkToolMessage?.content ?? ""), /"storagePath"\s*:/);
+  assert.match(String(shrunkToolMessage?.content ?? ""), /artifact:/);
   assert.doesNotMatch(String(shrunkToolMessage?.content ?? ""), /ROUND1-LARGE-ONE::/);
 });
 
@@ -369,9 +368,9 @@ test("runtime context externalizes only large tool results while small results s
 
   const continuedToolMessages = continuationRequest?.messages.filter((message) => message.role === "tool") ?? [];
   assert.equal(continuedToolMessages.length, 3);
-  assert.match(String(continuedToolMessages[0]?.content ?? ""), /"externalized"\s*:\s*true/);
+  assert.match(String(continuedToolMessages[0]?.content ?? ""), /result externalized/);
   assert.equal(String(continuedToolMessages[1]?.content ?? "").includes("small inline result"), true);
-  assert.match(String(continuedToolMessages[2]?.content ?? ""), /"externalized"\s*:\s*true/);
+  assert.match(String(continuedToolMessages[2]?.content ?? ""), /result externalized/);
   assert.doesNotMatch(String(continuedToolMessages[0]?.content ?? ""), /ROUND1-LARGE-ONE::/);
   assert.doesNotMatch(String(continuedToolMessages[2]?.content ?? ""), /ROUND1-LARGE-TWO::/);
 
@@ -390,7 +389,7 @@ test("runtime context externalizes only large tool results while small results s
   assert.ok(built.estimatedChars <= 10_000);
   assert.equal(
     built.messages.filter(
-      (message) => message.role === "tool" && /"externalized"\s*:\s*true/.test(String(message.content ?? "")),
+      (message) => message.role === "tool" && /result externalized/.test(String(message.content ?? "")),
     ).length,
     2,
   );
@@ -616,16 +615,8 @@ function buildLargeToolOutput(marker: string): string {
   );
 }
 
-function parseMessageJson(message: Pick<StoredMessage, "content">): Record<string, unknown> {
-  const content = message.content;
-  if (typeof content !== "string") {
-    throw new Error("Expected message content to be a JSON string.");
-  }
-  return JSON.parse(content) as Record<string, unknown>;
-}
-
-function readStoragePath(payload: Record<string, unknown>): string | undefined {
-  const storagePath = payload.storagePath;
+function readStoragePath(message: Pick<StoredMessage, "externalizedToolResult">): string | undefined {
+  const storagePath = message.externalizedToolResult?.storagePath;
   return typeof storagePath === "string" && storagePath.length > 0 ? storagePath : undefined;
 }
 

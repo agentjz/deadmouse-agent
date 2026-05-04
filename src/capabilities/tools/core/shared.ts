@@ -219,6 +219,33 @@ export function normalizeDiffPath(fileName: string | undefined): string | null {
   return fileName.replace(/^([ab])\//, "");
 }
 
+export function comparePathForDiscovery(root: string, left: string, right: string): number {
+  const leftRelative = toPosixRelative(root, left);
+  const rightRelative = toPosixRelative(root, right);
+  const leftDepth = pathDepth(leftRelative);
+  const rightDepth = pathDepth(rightRelative);
+
+  if (leftDepth !== rightDepth) {
+    return leftDepth - rightDepth;
+  }
+
+  const leftName = path.posix.basename(leftRelative).toLowerCase();
+  const rightName = path.posix.basename(rightRelative).toLowerCase();
+  if (leftName !== rightName) {
+    return leftName.localeCompare(rightName);
+  }
+
+  return leftRelative.localeCompare(rightRelative);
+}
+
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function toPosixRelative(root: string, targetPath: string): string {
+  return (path.relative(root, targetPath) || path.basename(targetPath)).replace(/\\/g, "/");
+}
+
+function pathDepth(relativePath: string): number {
+  return relativePath.split("/").filter(Boolean).length;
 }

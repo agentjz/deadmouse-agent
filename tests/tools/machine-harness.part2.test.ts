@@ -68,6 +68,28 @@ test("tool execution failures expose facts without forcing a route-changing next
   assert.match(String(payload.hint), /path used by read_file does not exist/i);
 });
 
+test("patch_file failure hints stay actionable without generic runtime-evidence noise", () => {
+  const result = buildToolExecutionFailureResult(
+    {
+      id: "call-1",
+      type: "function",
+      function: {
+        name: "patch_file",
+        arguments: JSON.stringify({
+          patch: "--- a/a.txt\n+++ b/a.txt\n@@\n-bad\n+good\n",
+        }),
+      },
+    },
+    new Error("patch_file could not parse the unified diff: Removed line count did not match"),
+  );
+  const payload = JSON.parse(result.output) as Record<string, unknown>;
+
+  assert.equal(result.ok, false);
+  assert.match(String(payload.hint), /unified diff/i);
+  assert.match(String(payload.hint), /read_file/i);
+  assert.doesNotMatch(String(payload.hint), /runtime evidence/i);
+});
+
 test("shutdown_response pending exposes request state without a strategy next step", async (t) => {
   const root = await createTempWorkspace("machine-shutdown-pending-whip", t);
   const request = await new ProtocolRequestStore(root).create({
@@ -116,6 +138,35 @@ test("run_shell runtime truncates long output into preview and persists full out
   assert.equal(result.metadata?.runtime?.truncated, true);
   assert.equal(result.metadata?.runtime?.outputPath, outputPath);
   assert.equal(result.metadata?.runtime?.status, "completed");
+});
+
+test("run_shell keeps success output short while the schema exposes the default shell dialect", async (t) => {
+  const root = await createTempWorkspace("machine-shell-runtime-info", t);
+  const registry = createToolRegistry();
+  const definition = registry.definitions.find((tool) => tool.function.name === "run_shell");
+
+  const result = await registry.execute(
+    "run_shell",
+    JSON.stringify({
+      command: "node --version",
+    }),
+    makeToolContext(root, root) as never,
+  );
+  const payload = JSON.parse(result.output) as Record<string, unknown>;
+
+  assert.equal(result.ok, true);
+  assert.equal(payload.platform, undefined);
+  assert.equal(payload.shell, undefined);
+  assert.equal(payload.shellInvocation, undefined);
+  assert.equal(payload.shellGuidance, undefined);
+  assert.equal(payload.status, "completed");
+  assert.equal(result.metadata?.runtime?.status, "completed");
+  assert.match(String(definition?.function.description ?? ""), /Current default shell/i);
+  if (process.platform === "win32") {
+    assert.match(String(definition?.function.description ?? ""), /powershell/i);
+    assert.match(String(definition?.function.description ?? ""), /PowerShell/i);
+    assert.match(String(definition?.function.description ?? ""), /Do not use Bash heredoc/i);
+  }
 });
 
 test("run_shell does not force potentially long commands into background_run", async (t) => {

@@ -4,9 +4,11 @@ import path from "node:path";
 import test from "node:test";
 
 import { buildSystemPromptLayers, renderPromptLayers } from "../../src/agent/promptSections.js";
+import { projectToolResultForModel } from "../../src/agent/toolResults/modelProjection.js";
 import { orderToolDefinitionsForLead } from "../../src/agent/capabilityPresentation.js";
 import { createToolRegistry } from "../../src/capabilities/tools/core/registry.js";
 import { createRuntimeToolRegistry } from "../../src/capabilities/tools/core/runtimeRegistry.js";
+import { loadProjectIgnoreRules } from "../../src/utils/ignore.js";
 import type { ProjectContext } from "../../src/types.js";
 import { createTempWorkspace, createTestRuntimeConfig, initGitRepo, makeToolContext } from "../helpers.js";
 
@@ -100,32 +102,147 @@ test("find_files returns relative path matches without collapsing into list_file
   assert.equal(Array.isArray(payload.matches), false);
 });
 
+test("find_files ranks shallow discovery facts before deep matches without hiding deep results", async (t) => {
+  const root = await createTempWorkspace("find-files-ranking", t);
+  await fs.mkdir(path.join(root, "docs", "nested"), { recursive: true });
+  await fs.writeFile(path.join(root, "README.md"), "# root\n", "utf8");
+  await fs.writeFile(path.join(root, "docs", "README.md"), "# docs\n", "utf8");
+  await fs.writeFile(path.join(root, "docs", "nested", "README.md"), "# nested\n", "utf8");
+
+  const registry = createToolRegistry();
+  const result = await registry.execute(
+    "find_files",
+    JSON.stringify({
+      path: ".",
+      pattern: "**/README.md",
+      limit: 10,
+    }),
+    makeToolContext(root, root) as never,
+  );
+
+  const payload = JSON.parse(result.output) as Record<string, unknown>;
+  const files = payload.files as string[];
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(files, ["README.md", "docs/README.md", "docs/nested/README.md"]);
+  assert.equal(payload.totalMatches, 3);
+  assert.equal(payload.truncated, false);
+});
+
+test("find_files consumes centralized ignore rules instead of per-tool hidden directory lists", async (t) => {
+  const root = await createTempWorkspace("find-files-centralized-ignore", t);
+  await fs.mkdir(path.join(root, ".kitty"), { recursive: true });
+  await fs.mkdir(path.join(root, "src"), { recursive: true });
+  await fs.mkdir(path.join(root, "generated"), { recursive: true });
+  await fs.writeFile(path.join(root, ".kitty", ".kittyignore"), "generated/\n", "utf8");
+  await fs.writeFile(path.join(root, "src", "keep.txt"), "keep\n", "utf8");
+  await fs.writeFile(path.join(root, "generated", "drop.txt"), "drop\n", "utf8");
+  const ignoreRules = await loadProjectIgnoreRules(root, root);
+
+  const registry = createToolRegistry();
+  const result = await registry.execute(
+    "find_files",
+    JSON.stringify({
+      path: ".",
+      pattern: "**/*.txt",
+      limit: 10,
+    }),
+    makeToolContext(root, root, {
+      projectContext: {
+        ...createProjectContext(root),
+        ignoreRules,
+      },
+    }) as never,
+  );
+
+  const payload = JSON.parse(result.output) as Record<string, unknown>;
+  assert.equal(result.ok, true);
+  assert.deepEqual(payload.files, ["src/keep.txt"]);
+});
+
+test("find_files preserves centralized ignore negation semantics", async (t) => {
+  const root = await createTempWorkspace("find-files-ignore-negation", t);
+  await fs.mkdir(path.join(root, ".kitty"), { recursive: true });
+  await fs.mkdir(path.join(root, "generated"), { recursive: true });
+  await fs.writeFile(path.join(root, ".kitty", ".kittyignore"), "generated/\n!generated/keep.txt\n", "utf8");
+  await fs.writeFile(path.join(root, "generated", "drop.txt"), "drop\n", "utf8");
+  await fs.writeFile(path.join(root, "generated", "keep.txt"), "keep\n", "utf8");
+  const ignoreRules = await loadProjectIgnoreRules(root, root);
+
+  const registry = createToolRegistry();
+  const result = await registry.execute(
+    "find_files",
+    JSON.stringify({
+      path: ".",
+      pattern: "**/*.txt",
+      limit: 10,
+    }),
+    makeToolContext(root, root, {
+      projectContext: {
+        ...createProjectContext(root),
+        ignoreRules,
+      },
+    }) as never,
+  );
+
+  const payload = JSON.parse(result.output) as Record<string, unknown>;
+  assert.equal(result.ok, true);
+  assert.deepEqual(payload.files, ["generated/keep.txt"]);
+});
+
+test("find_files preserves anchored ignore semantics during glob prefiltering", async (t) => {
+  const root = await createTempWorkspace("find-files-ignore-anchored", t);
+  await fs.mkdir(path.join(root, ".kitty"), { recursive: true });
+  await fs.mkdir(path.join(root, "generated"), { recursive: true });
+  await fs.mkdir(path.join(root, "src", "generated"), { recursive: true });
+  await fs.writeFile(path.join(root, ".kitty", ".kittyignore"), "/generated/\n", "utf8");
+  await fs.writeFile(path.join(root, "generated", "drop.txt"), "drop\n", "utf8");
+  await fs.writeFile(path.join(root, "src", "generated", "keep.txt"), "keep\n", "utf8");
+  const ignoreRules = await loadProjectIgnoreRules(root, root);
+
+  const registry = createToolRegistry();
+  const result = await registry.execute(
+    "find_files",
+    JSON.stringify({
+      path: ".",
+      pattern: "**/*.txt",
+      limit: 10,
+    }),
+    makeToolContext(root, root, {
+      projectContext: {
+        ...createProjectContext(root),
+        ignoreRules,
+      },
+    }) as never,
+  );
+
+  const payload = JSON.parse(result.output) as Record<string, unknown>;
+  assert.equal(result.ok, true);
+  assert.deepEqual(payload.files, ["src/generated/keep.txt"]);
+});
+
 test("edit_file rejects overlapping edits that target the same original file region", async (t) => {
   const root = await createTempWorkspace("edit-file-overlap", t);
   const filePath = path.join(root, "story.txt");
   await fs.writeFile(filePath, "alpha\nbeta\ngamma\ndelta\n", "utf8");
 
   const registry = createToolRegistry();
-  const { identity, anchors } = await readFileState(registry, root, "story.txt");
-  const betaAnchor = anchors.find((anchor) => anchor.line === 2);
-  const gammaAnchor = anchors.find((anchor) => anchor.line === 3);
   await assert.rejects(
     () =>
       registry.execute(
         "edit_file",
         JSON.stringify({
           path: "story.txt",
-          expected_identity: identity,
           edits: [
             {
-              anchor: betaAnchor,
               old_string: "beta\ngamma",
               new_string: "BETA\nGAMMA",
+              line: 2,
             },
             {
-              anchor: gammaAnchor,
               old_string: "gamma\ndelta",
               new_string: "GAMMA\nDELTA",
+              line: 3,
             },
           ],
         }),
@@ -141,23 +258,17 @@ test("edit_file returns a deterministic diff preview for the same batched edit p
   await fs.writeFile(path.join(root, "b.txt"), "alpha\nbeta\ngamma\ndelta\n", "utf8");
 
   const registry = createToolRegistry();
-  const firstState = await readFileState(registry, root, "a.txt");
-  const secondState = await readFileState(registry, root, "b.txt");
-  const firstBetaAnchor = firstState.anchors.find((anchor) => anchor.line === 2);
-  const firstDeltaAnchor = firstState.anchors.find((anchor) => anchor.line === 4);
-  const secondBetaAnchor = secondState.anchors.find((anchor) => anchor.line === 2);
-  const secondDeltaAnchor = secondState.anchors.find((anchor) => anchor.line === 4);
   const args = JSON.stringify({
     edits: [
       {
-        anchor: firstBetaAnchor,
         old_string: "beta",
         new_string: "BETA",
+        line: 2,
       },
       {
-        anchor: firstDeltaAnchor,
         old_string: "delta",
         new_string: "DELTA",
+        line: 4,
       },
     ],
   });
@@ -166,7 +277,6 @@ test("edit_file returns a deterministic diff preview for the same batched edit p
     "edit_file",
     JSON.stringify({
       path: "a.txt",
-      expected_identity: firstState.identity,
       ...JSON.parse(args),
     }),
     makeToolContext(root, root) as never,
@@ -175,17 +285,16 @@ test("edit_file returns a deterministic diff preview for the same batched edit p
     "edit_file",
     JSON.stringify({
       path: "b.txt",
-      expected_identity: secondState.identity,
       edits: [
         {
-          anchor: secondBetaAnchor,
           old_string: "beta",
           new_string: "BETA",
+          line: 2,
         },
         {
-          anchor: secondDeltaAnchor,
           old_string: "delta",
           new_string: "DELTA",
+          line: 4,
         },
       ],
     }),
@@ -238,6 +347,78 @@ test("read_file returns continuation metadata when a limited read truncates the 
   });
 });
 
+test("read_file keeps content before edit evidence in the model-visible payload", async (t) => {
+  const root = await createTempWorkspace("read-file-payload-order", t);
+  await fs.writeFile(path.join(root, "story.txt"), "alpha\nbeta\n", "utf8");
+
+  const registry = createToolRegistry();
+  const result = await registry.execute(
+    "read_file",
+    JSON.stringify({
+      path: "story.txt",
+      offset: 1,
+      limit: 2,
+    }),
+    makeToolContext(root, root) as never,
+  );
+
+  const payload = JSON.parse(result.output) as Record<string, unknown>;
+  const contentIndex = result.output.indexOf('"content"');
+
+  assert.equal(result.ok, true);
+  assert.match(String(payload.content ?? ""), /alpha/);
+  assert(contentIndex > -1);
+  assert.equal(Object.hasOwn(payload, "identity"), false);
+  assert.equal(Object.hasOwn(payload, "anchors"), false);
+});
+
+test("read_file keeps larger focused reads direct without edit anchor noise", async (t) => {
+  const root = await createTempWorkspace("read-file-large-no-anchors", t);
+  const content = Array.from({ length: 140 }, (_, index) => `line-${index + 1}`).join("\n");
+  await fs.writeFile(path.join(root, "large.ts"), content, "utf8");
+
+  const registry = createToolRegistry();
+  const result = await registry.execute(
+    "read_file",
+    JSON.stringify({
+      path: "large.ts",
+      offset: 1,
+      limit: 140,
+    }),
+    makeToolContext(root, root) as never,
+  );
+
+  const payload = JSON.parse(result.output) as Record<string, unknown>;
+
+  assert.equal(result.ok, true);
+  assert.match(String(payload.content ?? ""), /line-140/);
+  assert.equal(Object.hasOwn(payload, "anchors"), false);
+  assert.equal(Object.hasOwn(payload, "anchorWindow"), false);
+  assert.equal(result.output.length < 12_000, true);
+});
+
+test("edit_file schema exposes old/new text and optional line hint without anchor protocol", () => {
+  const registry = createToolRegistry();
+  const definition = registry.definitions.find((tool) => tool.function.name === "edit_file");
+  assert(definition?.function.parameters && "properties" in definition.function.parameters);
+  const parameters = definition.function.parameters as { properties: Record<string, unknown> };
+  const edits = parameters.properties.edits as {
+    items?: {
+      properties?: {
+        line?: unknown;
+        old_string?: unknown;
+        new_string?: unknown;
+      };
+    };
+  } | undefined;
+  const editProperties = edits?.items?.properties ?? {};
+
+  assert.equal(Object.hasOwn(editProperties, "line"), true);
+  assert.equal(Object.hasOwn(editProperties, "old_string"), true);
+  assert.equal(Object.hasOwn(editProperties, "new_string"), true);
+  assert.equal(Object.hasOwn(editProperties, "anchor"), false);
+});
+
 test("git fact tools expose structured status and diff without shell-first parsing", async (t) => {
   const root = await createTempWorkspace("git-fact-tools", t);
   await initGitRepo(root);
@@ -283,6 +464,56 @@ test("git fact tools expose structured status and diff without shell-first parsi
   assert.equal(stats.insertions, 2);
 });
 
+test("git_status honors a path filter instead of only using it to locate the worktree", async (t) => {
+  const root = await createTempWorkspace("git-status-path-filter", t);
+  await initGitRepo(root);
+  await fs.mkdir(path.join(root, "src"), { recursive: true });
+  await fs.writeFile(path.join(root, "README.md"), "# changed\n", "utf8");
+  await fs.writeFile(path.join(root, "src", "app.ts"), "export const app = true;\n", "utf8");
+
+  const registry = createToolRegistry();
+  const result = await registry.execute(
+    "git_status",
+    JSON.stringify({
+      path: "src",
+      include_untracked: true,
+    }),
+    makeToolContext(root, root) as never,
+  );
+
+  const payload = JSON.parse(result.output) as Record<string, unknown>;
+  const files = payload.files as Array<Record<string, unknown>>;
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(files.map((file) => file.path), ["src/app.ts"]);
+  assert.equal((payload.summary as Record<string, unknown>).modified, 0);
+  assert.equal((payload.summary as Record<string, unknown>).untracked, 1);
+});
+
+test("git_status treats dot as the current cwd path inside a larger worktree", async (t) => {
+  const root = await createTempWorkspace("git-status-dot-subdir", t);
+  await initGitRepo(root);
+  await fs.mkdir(path.join(root, "workspace"), { recursive: true });
+  await fs.writeFile(path.join(root, "root.txt"), "root\n", "utf8");
+  await fs.writeFile(path.join(root, "workspace", "local.txt"), "local\n", "utf8");
+
+  const registry = createToolRegistry();
+  const result = await registry.execute(
+    "git_status",
+    JSON.stringify({
+      path: ".",
+      include_untracked: true,
+    }),
+    makeToolContext(root, path.join(root, "workspace")) as never,
+  );
+
+  const payload = JSON.parse(result.output) as Record<string, unknown>;
+  const files = payload.files as Array<Record<string, unknown>>;
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(files.map((file) => file.path), ["workspace/local.txt"]);
+});
+
 test("git_diff can include untracked text files for full agent-visible change review", async (t) => {
   const root = await createTempWorkspace("git-diff-untracked", t);
   await initGitRepo(root);
@@ -314,6 +545,103 @@ test("git_diff can include untracked text files for full agent-visible change re
   assert.match(String(untrackedPayload.diff ?? ""), /\+first/);
   assert.equal(stats.filesChanged, 1);
   assert.equal(stats.insertions, 2);
+});
+
+test("git_diff model projection omits large worktree diff bodies while keeping focused path diffs", () => {
+  const large = projectToolResultForModel({
+    toolName: "git_diff",
+    result: {
+      ok: true,
+      output: JSON.stringify({
+        stats: {
+          filesChanged: 12,
+          insertions: 120,
+          deletions: 40,
+          files: Array.from({ length: 12 }, (_, index) => ({
+            path: `src/${index}.ts`,
+            insertions: 10,
+            deletions: 2,
+          })),
+        },
+        diff: "diff --git a/src/0.ts b/src/0.ts\n+large-body",
+      }),
+    },
+  });
+  const focused = projectToolResultForModel({
+    toolName: "git_diff",
+    result: {
+      ok: true,
+      output: JSON.stringify({
+        path: "src/a.ts",
+        stats: {
+          filesChanged: 1,
+          insertions: 2,
+          deletions: 1,
+          files: [{ path: "src/a.ts", insertions: 2, deletions: 1 }],
+        },
+        diff: "diff --git a/src/a.ts b/src/a.ts\n+focused-body",
+      }),
+    },
+  });
+
+  assert.match(large, /12 files changed/);
+  assert.doesNotMatch(large, /large-body/);
+  assert.match(large, /specific path/);
+  assert.match(focused, /focused-body/);
+});
+
+test("git_diff model projection treats the worktree root path as an overall diff", () => {
+  const projected = projectToolResultForModel({
+    toolName: "git_diff",
+    result: {
+      ok: true,
+      output: JSON.stringify({
+        root: "C:/repo",
+        path: "C:/repo",
+        stats: {
+          filesChanged: 12,
+          insertions: 120,
+          deletions: 40,
+          files: Array.from({ length: 12 }, (_, index) => ({
+            path: `src/${index}.ts`,
+            insertions: 10,
+            deletions: 2,
+          })),
+        },
+        diff: "diff --git a/src/0.ts b/src/0.ts\n+root-body",
+      }),
+    },
+  });
+
+  assert.match(projected, /12 files changed/);
+  assert.doesNotMatch(projected, /root-body/);
+});
+
+test("git_diff treats dot as the current cwd path inside a larger worktree", async (t) => {
+  const root = await createTempWorkspace("git-diff-dot-subdir", t);
+  await initGitRepo(root);
+  await fs.mkdir(path.join(root, "workspace"), { recursive: true });
+  await fs.writeFile(path.join(root, "root.txt"), "root\n", "utf8");
+  await fs.writeFile(path.join(root, "workspace", "local.txt"), "local\n", "utf8");
+
+  const registry = createToolRegistry();
+  const result = await registry.execute(
+    "git_diff",
+    JSON.stringify({
+      path: ".",
+      stat: true,
+      include_untracked: true,
+    }),
+    makeToolContext(root, path.join(root, "workspace")) as never,
+  );
+
+  const payload = JSON.parse(result.output) as Record<string, unknown>;
+  const stats = payload.stats as { files?: Array<{ path?: string }> };
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(stats.files?.map((file) => file.path), ["workspace/local.txt"]);
+  assert.match(String(payload.diff ?? ""), /workspace\/local\.txt/);
+  assert.doesNotMatch(String(payload.diff ?? ""), /root\.txt/);
 });
 
 test("patch_file applies a multi-file unified diff and records structured change evidence", async (t) => {
@@ -355,8 +683,70 @@ test("patch_file applies a multi-file unified diff and records structured change
   assert.equal(await fs.readFile(path.join(root, "b.txt"), "utf8"), "ONE\ntwo\n");
   assert.match(String(payload.diff ?? ""), /\+ BETA/);
   assert.match(String(payload.diff ?? ""), /\+ ONE/);
-  assert.equal(typeof payload.sessionDiff, "object");
+  assert.equal(Object.hasOwn(payload, "sessionDiff"), false);
   assert.equal(Array.isArray(result.metadata?.changedPaths), true);
+  assert.equal(typeof result.metadata?.sessionDiff, "object");
+});
+
+test("patch_file schema teaches explicit hunk ranges instead of bare @@ hunks", () => {
+  const registry = createToolRegistry();
+  const definition = registry.definitions.find((tool) => tool.function.name === "patch_file");
+  assert(definition?.function.parameters && "properties" in definition.function.parameters);
+  const parameters = definition.function.parameters as { properties: Record<string, unknown> };
+  const patchProperty = parameters.properties.patch as { description?: string } | undefined;
+
+  assert.match(String(definition?.function.description ?? ""), /@@ -1,3 \+1,4 @@/);
+  assert.match(String(definition?.function.description ?? ""), /unchanged context/);
+  assert.match(String(definition?.function.description ?? ""), /Patch format example/);
+  assert.match(String(patchProperty?.description ?? ""), /explicit @@ -oldStart,oldCount \+newStart,newCount @@/);
+  assert.match(String(patchProperty?.description ?? ""), /unprefixed lines are context/);
+});
+
+test("patch_file accepts bare context lines for speed-first model patches", async (t) => {
+  const root = await createTempWorkspace("patch-file-bare-context", t);
+  await fs.mkdir(path.join(root, "src"), { recursive: true });
+  await fs.writeFile(
+    path.join(root, "src", "math.ts"),
+    [
+      "export function add(a: number, b: number): number {",
+      "  return a + b;",
+      "}",
+      "",
+      "export const label = 'math';",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const registry = createToolRegistry();
+  const result = await registry.execute(
+    "patch_file",
+    JSON.stringify({
+      patch: [
+        "--- a/src/math.ts",
+        "+++ b/src/math.ts",
+        "@@ -1,6 +1,10 @@",
+        "export function add(a: number, b: number): number {",
+        "  return a + b;",
+        "}",
+        "",
+        "-export const label = 'math';",
+        "+export function multiply(a: number, b: number): number {",
+        "+  return a * b;",
+        "+}",
+        "+",
+        "+export const label = 'math-tools';",
+        "",
+      ].join("\n"),
+    }),
+    makeToolContext(root, root) as never,
+  );
+
+  const content = await fs.readFile(path.join(root, "src", "math.ts"), "utf8");
+
+  assert.equal(result.ok, true);
+  assert.match(content, /multiply/);
+  assert.match(content, /math-tools/);
 });
 
 test("patch_file dry_run validates a patch without writing files", async (t) => {
@@ -387,7 +777,7 @@ test("patch_file dry_run validates a patch without writing files", async (t) => 
   assert.equal(payload.applied, false);
   assert.equal(await fs.readFile(path.join(root, "a.txt"), "utf8"), "alpha\nbeta\n");
   assert.equal(payload.changeId, undefined);
-  assert.equal(payload.sessionDiff, undefined);
+  assert.equal(Object.hasOwn(payload, "sessionDiff"), false);
 });
 
 test("patch_file fails closed on stale hunks with actionable read evidence", async (t) => {
@@ -729,30 +1119,11 @@ test("system prompt steers path discovery toward find_files instead of shell-fir
   assert.match(prompt, /find_files/i);
   assert.match(prompt, /git_status/i);
   assert.match(prompt, /git_diff/i);
+  assert.match(prompt, /find_files for path\/name\/glob discovery/i);
+  assert.match(prompt, /search_files only for text content matches/i);
+  assert.match(prompt, /Do not use search_files to locate a file by its name/i);
   assert.match(prompt, /locate facts -> focused read -> patch_file\/edit_file\/write_file -> git_diff -> run_shell/i);
+  assert.match(prompt, /avoid running validation shell commands before the edit\/diff loop/i);
   assert.match(prompt, /patch_file/i);
   assert.match(prompt, /shell workaround/i);
 });
-
-async function readFileState(
-  registry: ReturnType<typeof createToolRegistry>,
-  root: string,
-  relativePath: string,
-): Promise<{
-  identity: Record<string, unknown>;
-  anchors: Array<Record<string, unknown>>;
-}> {
-  const result = await registry.execute(
-    "read_file",
-    JSON.stringify({
-      path: relativePath,
-    }),
-    makeToolContext(root, root) as never,
-  );
-
-  const payload = JSON.parse(result.output) as Record<string, unknown>;
-  return {
-    identity: payload.identity as Record<string, unknown>,
-    anchors: payload.anchors as Array<Record<string, unknown>>,
-  };
-}

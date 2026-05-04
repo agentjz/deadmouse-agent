@@ -85,9 +85,11 @@ test("buildProviderRequestBody derives provider-specific reasoning behavior from
   assert.deepEqual(deepseekBody.thinking, { type: "enabled" });
   assert.equal(deepseekBody.reasoning_effort, "max");
   assert.equal(deepseekBody.max_tokens, 23_456);
+  assert.equal("tool_choice" in deepseekBody, false);
   assert.deepEqual(deepseekNonThinkingBody.thinking, { type: "disabled" });
   assert.equal("reasoning_effort" in deepseekNonThinkingBody, false);
   assert.equal("thinking" in genericBody, false);
+  assert.equal(genericBody.tool_choice, "auto");
 });
 
 test("buildProviderRequestBody replays DeepSeek reasoning_content for included assistant messages", () => {
@@ -127,11 +129,34 @@ test("buildProviderRequestBody replays DeepSeek reasoning_content for included a
 
   const messages = body.messages as Array<Record<string, unknown>>;
   assert.deepEqual(body.thinking, { type: "enabled" });
+  assert.equal(messages[1]?.content, "");
   assert.equal(messages[1]?.reasoning_content, "I need to inspect the file first.");
   assert.equal(messages[3]?.reasoning_content, "The tool result is enough to answer.");
 });
 
-test("buildProviderRequestBody disables DeepSeek thinking when retained assistant messages cannot replay reasoning_content", () => {
+test("buildProviderRequestBody keeps DeepSeek thinking when retained text-only assistant messages lack reasoning_content", () => {
+  const body = buildProviderRequestBody({
+    provider: "deepseek",
+    model: "deepseek-v4-flash",
+    messages: [
+      { role: "user", content: "Inspect README.md" },
+      {
+        role: "assistant",
+        content: "README inspected.",
+      },
+    ],
+    tools: [createTool()],
+    stream: false,
+    forceReasoning: false,
+    thinking: "enabled",
+    reasoningEffort: "high",
+  });
+
+  assert.deepEqual(body.thinking, { type: "enabled" });
+  assert.equal(body.reasoning_effort, "high");
+});
+
+test("buildProviderRequestBody disables DeepSeek thinking when retained tool-call assistant messages cannot replay reasoning_content", () => {
   const body = buildProviderRequestBody({
     provider: "deepseek",
     model: "deepseek-v4-flash",
@@ -164,19 +189,29 @@ test("buildProviderRequestBody disables DeepSeek thinking when retained assistan
   assert.equal("reasoning_effort" in body, false);
 });
 
-test("buildProviderRequestBody rejects unsupported DeepSeek V4 reasoning efforts instead of silently remapping them", () => {
-  assert.throws(
-    () =>
-      buildProviderRequestBody({
-        provider: "deepseek",
-        model: "deepseek-v4-flash",
-        messages: [{ role: "user", content: "Inspect README.md" }],
-        tools: undefined,
-        stream: false,
-        forceReasoning: false,
-        thinking: "enabled",
-        reasoningEffort: "xhigh",
-      }),
-    /DeepSeek V4 reasoning_effort must be high or max/,
-  );
+test("buildProviderRequestBody maps generic effort names onto DeepSeek V4 high or max", () => {
+  const lowBody = buildProviderRequestBody({
+    provider: "deepseek",
+    model: "deepseek-v4-flash",
+    messages: [{ role: "user", content: "Inspect README.md" }],
+    tools: undefined,
+    stream: true,
+    forceReasoning: false,
+    thinking: "enabled",
+    reasoningEffort: "low",
+  });
+  const xhighBody = buildProviderRequestBody({
+    provider: "deepseek",
+    model: "deepseek-v4-flash",
+    messages: [{ role: "user", content: "Inspect README.md" }],
+    tools: undefined,
+    stream: true,
+    forceReasoning: false,
+    thinking: "enabled",
+    reasoningEffort: "xhigh",
+  });
+
+  assert.equal(lowBody.reasoning_effort, "high");
+  assert.equal(xhighBody.reasoning_effort, "max");
+  assert.deepEqual(lowBody.stream_options, { include_usage: true });
 });

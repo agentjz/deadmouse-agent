@@ -237,7 +237,7 @@ export function toChatCompletionMessages(messages: ProviderMessage[]): ChatCompl
     if (message.role === "assistant" && message.toolCalls?.length) {
       const assistantMessage: Record<string, unknown> = {
         role: "assistant",
-        content: message.content,
+        content: message.content ?? "",
         tool_calls: message.toolCalls,
       };
 

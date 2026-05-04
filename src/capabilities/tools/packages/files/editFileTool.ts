@@ -5,23 +5,15 @@ import { decodeTextFileEnvelope, encodeTextFileEnvelope } from "../../../../util
 import { recordToolChange } from "../../core/changeTracking.js";
 import { ToolExecutionError } from "../../core/errors.js";
 import { toToolRelativePath } from "../../core/pathDisplay.js";
-import { buildDiffPreview, okResult, parseArgs, readPossiblyEmptyString, readString } from "../../core/shared.js";
+import { buildDiffPreview, okResult, parseArgs, readOptionalNumber, readPossiblyEmptyString, readString } from "../../core/shared.js";
 import { buildToolChangeFeedback } from "./toolChangeFeedback.js";
 import { collectWriteDiagnostics } from "./writeDiagnostics.js";
-import { findAnchoredOccurrences, validateAnchorAgainstSource } from "./editAnchorMatch.js";
-import { readFileEditAnchor, type FileEditAnchor } from "./editAnchor.js";
-import {
-  buildFileEditIdentity,
-  getFileEditIdentityMismatch,
-  hasFileEditIdentityContentChanged,
-  readFileEditIdentity,
-} from "./editIdentity.js";
 import type { RegisteredTool } from "../../core/types.js";
 
 interface RequestedEdit {
-  anchor: FileEditAnchor;
   oldString: string;
   newString: string;
+  line?: number;
 }
 
 interface PlannedEdit {
@@ -39,7 +31,7 @@ export const editFileTool: RegisteredTool = {
     type: "function",
     function: {
       name: "edit_file",
-      description: "Edit an existing file by replacing exact text from the original file. Requires the stable identity returned by read_file and is preferred over write_file for small surgical changes.",
+      description: "Edit an existing file by replacing exact text. Use read_file first for the target area, then provide old_string, new_string, and optionally the 1-based line near the edit.",
       parameters: {
         type: "object",
         properties: {
@@ -47,73 +39,31 @@ export const editFileTool: RegisteredTool = {
             type: "string",
             description: "File path to edit.",
           },
-          expected_identity: {
-            type: "object",
-            description: "Stable identity returned by read_file for this file. Required for existing-file edits.",
-            properties: {
-              version: {
-                type: "number",
-              },
-              path: {
-                type: "string",
-              },
-              sha256: {
-                type: "string",
-              },
-              byteLength: {
-                type: "number",
-              },
-              lineCount: {
-                type: "number",
-              },
-            },
-            required: ["path", "sha256", "byteLength", "lineCount"],
-            additionalProperties: false,
-          },
           edits: {
             type: "array",
-            description: "Batch edit plan applied against the original file contents.",
+            description: "Batch edit plan applied against the current file contents.",
             items: {
               type: "object",
               properties: {
                 old_string: {
                   type: "string",
-                  description: "Exact text to replace from the original file.",
+                  description: "Exact current text to replace.",
                 },
-                anchor: {
-                  type: "object",
-                  description: "Formal line anchor returned by read_file for the start of this edit.",
-                  properties: {
-                    version: {
-                      type: "number",
-                    },
-                    path: {
-                      type: "string",
-                    },
-                    line: {
-                      type: "number",
-                    },
-                    hash: {
-                      type: "string",
-                    },
-                    preview: {
-                      type: "string",
-                    },
-                  },
-                  required: ["path", "line", "hash"],
-                  additionalProperties: false,
+                line: {
+                  type: "number",
+                  description: "Optional 1-based line near the edit. Use this when the same old_string appears more than once.",
                 },
                 new_string: {
                   type: "string",
                   description: "Replacement text.",
                 },
               },
-              required: ["anchor", "old_string", "new_string"],
+              required: ["old_string", "new_string"],
               additionalProperties: false,
             },
           },
         },
-        required: ["path", "expected_identity", "edits"],
+        required: ["path", "edits"],
         additionalProperties: false,
       },
     },
@@ -121,7 +71,6 @@ export const editFileTool: RegisteredTool = {
   async execute(rawArgs, context) {
     const args = parseArgs(rawArgs);
     const targetPath = readString(args.path, "path");
-    const expectedIdentity = readFileEditIdentity(args.expected_identity, "expected_identity");
     const edits = readRequestedEdits(args.edits);
     const resolved = resolveUserPath(targetPath, context.cwd);
     const displayPath = toToolRelativePath(context.cwd, resolved);
@@ -139,18 +88,7 @@ export const editFileTool: RegisteredTool = {
       }
 
       const before = beforeEnvelope.text;
-      const currentIdentity = buildFileEditIdentity(resolved, before);
-      const mismatch = getFileEditIdentityMismatch(expectedIdentity, currentIdentity, resolved);
-      if (mismatch) {
-        throw new ToolExecutionError(mismatch, {
-          code: "EDIT_IDENTITY_PATH_MISMATCH",
-          details: {
-            path: resolved,
-          },
-        });
-      }
-
-      const plannedEdits = buildEditPlan(before, edits, resolved);
+      const plannedEdits = buildEditPlan(before, edits, displayPath);
       const after = applyEditPlan(before, plannedEdits);
 
       if (after === before) {
@@ -193,18 +131,12 @@ export const editFileTool: RegisteredTool = {
         JSON.stringify(
           {
             path: displayPath,
-            absolutePath: resolved,
             requestedEdits: edits.length,
             appliedEdits: plannedEdits.length,
-            identityChangedBeforeEdit: hasFileEditIdentityContentChanged(expectedIdentity, currentIdentity),
             changedPaths: [displayPath],
-            absoluteChangedPaths: [resolved],
             changeId: changeRecord.change?.id,
             changeHistoryWarning: changeRecord.warning,
             diff: feedback.diff,
-            diagnostics: feedback.diagnostics,
-            sessionDiff: feedback.sessionDiff,
-            preview: truncateText(diff, 6_000),
           },
           null,
           2,
@@ -234,46 +166,48 @@ function readRequestedEdit(value: unknown, field: string): RequestedEdit {
 
   const record = value as Record<string, unknown>;
   return {
-    anchor: readFileEditAnchor(record.anchor, `${field}.anchor`),
     oldString: readPossiblyEmptyString(record.old_string, `${field}.old_string`),
     newString: readPossiblyEmptyString(record.new_string, `${field}.new_string`),
+    line: readOptionalNumber(record.line),
   };
 }
 
-function buildEditPlan(before: string, request: RequestedEdit[], resolvedPath: string): PlannedEdit[] {
+function buildEditPlan(before: string, request: RequestedEdit[], displayPath: string): PlannedEdit[] {
   const planned: PlannedEdit[] = [];
 
   request.forEach((edit, sourceIndex) => {
-    validateAnchorAgainstSource(before, edit.anchor, resolvedPath);
-    const matches = findAnchoredOccurrences(before, edit.oldString, edit.anchor);
+    const matches = findEditOccurrences(before, edit.oldString, edit.line);
     if (matches.length === 0) {
-      throw new ToolExecutionError(`edit_file could not find edit ${sourceIndex + 1} at anchored line ${edit.anchor.line}. A fresh read_file anchor is required.`, {
+      throw new ToolExecutionError(`edit_file could not find edit ${sourceIndex + 1}. Fresh read_file around the target area, then retry with current old_string.`, {
         code: "EDIT_NOT_FOUND",
         details: {
           editIndex: sourceIndex,
-          line: edit.anchor.line,
+          line: edit.line,
+          readArgs: buildFreshReadArgs(displayPath, edit.line),
         },
       });
     }
 
     if (matches.length > 1) {
-      throw new ToolExecutionError(`edit_file edit ${sourceIndex + 1} still matched multiple regions near anchored line ${edit.anchor.line}; merge the edit or make old_string more specific.`, {
+      throw new ToolExecutionError(`edit_file edit ${sourceIndex + 1} matched multiple regions; add a line hint, merge the edit, or make old_string more specific.`, {
         code: "EDIT_AMBIGUOUS",
         details: {
           editIndex: sourceIndex,
           matches: matches.length,
-          line: edit.anchor.line,
+          line: edit.line,
+          readArgs: buildFreshReadArgs(displayPath, edit.line),
         },
       });
     }
 
     const match = matches[0];
     if (!match) {
-      throw new ToolExecutionError(`edit_file lost its anchored match for edit ${sourceIndex + 1}. A fresh read_file anchor is required.`, {
+      throw new ToolExecutionError(`edit_file lost its match for edit ${sourceIndex + 1}. Fresh read_file around the target area, then retry.`, {
         code: "EDIT_NOT_FOUND",
         details: {
           editIndex: sourceIndex,
-          line: edit.anchor.line,
+          line: edit.line,
+          readArgs: buildFreshReadArgs(displayPath, edit.line),
         },
       });
     }
@@ -290,6 +224,66 @@ function buildEditPlan(before: string, request: RequestedEdit[], resolvedPath: s
   planned.sort((left, right) => left.start - right.start || left.end - right.end || left.sourceIndex - right.sourceIndex);
   assertNoOverlappingEdits(planned);
   return planned;
+}
+
+function findEditOccurrences(
+  before: string,
+  oldString: string,
+  lineHint: number | undefined,
+): Array<{ start: number; end: number; oldString: string }> {
+  const matches: Array<{ start: number; end: number; oldString: string; distance: number }> = [];
+  let offset = 0;
+
+  if (oldString.length === 0) {
+    return [];
+  }
+
+  while (offset <= before.length) {
+    const index = before.indexOf(oldString, offset);
+    if (index === -1) {
+      break;
+    }
+
+    const line = lineForOffset(before, index);
+    matches.push({
+      start: index,
+      end: index + oldString.length,
+      oldString,
+      distance: lineHint === undefined ? 0 : Math.abs(line - lineHint),
+    });
+    offset = index + Math.max(1, oldString.length);
+  }
+
+  if (lineHint === undefined || matches.length <= 1) {
+    return matches.map(({ start, end, oldString }) => ({ start, end, oldString }));
+  }
+
+  const closestDistance = Math.min(...matches.map((match) => match.distance));
+  return matches
+    .filter((match) => match.distance === closestDistance)
+    .map(({ start, end, oldString }) => ({ start, end, oldString }));
+}
+
+function lineForOffset(input: string, offset: number): number {
+  let line = 1;
+  for (let index = 0; index < offset; index += 1) {
+    if (input.charCodeAt(index) === 10) {
+      line += 1;
+    }
+  }
+  return line;
+}
+
+function buildFreshReadArgs(path: string, line: number | undefined): {
+  path: string;
+  offset: number;
+  limit: number;
+} {
+  return {
+    path,
+    offset: Math.max(1, (line ?? 1) - 20),
+    limit: 60,
+  };
 }
 
 function assertNoOverlappingEdits(edits: PlannedEdit[]): void {

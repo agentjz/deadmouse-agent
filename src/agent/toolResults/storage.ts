@@ -15,6 +15,7 @@ interface CreateStoredToolMessageParams {
   toolCallId: string;
   toolName: string;
   rawOutput: string;
+  modelOutput?: string;
   sessionId: string;
   projectContext: Pick<ProjectContext, "stateRootDir">;
 }
@@ -22,14 +23,16 @@ interface CreateStoredToolMessageParams {
 export async function createStoredToolMessage(
   params: CreateStoredToolMessageParams,
 ): Promise<StoredMessage> {
+  const content = params.modelOutput ?? params.rawOutput;
   if (!shouldExternalizeToolResult(params.rawOutput)) {
-    return createToolMessage(params.toolCallId, params.rawOutput, params.toolName);
+    return createToolMessage(params.toolCallId, content, params.toolName);
   }
 
   const externalizedToolResult = await externalizeToolResult(params);
+  const externalizedContent = buildExternalizedModelContent(params.toolName, externalizedToolResult);
   return createToolMessage(
     params.toolCallId,
-    JSON.stringify(buildExternalizedToolPayload(params.toolName, params.rawOutput, externalizedToolResult), null, 2),
+    externalizedContent,
     params.toolName,
     {
       externalizedToolResult,
@@ -110,6 +113,16 @@ function buildExternalizedToolPayload(
   }
 
   return payload;
+}
+
+function buildExternalizedModelContent(
+  toolName: string,
+  externalizedToolResult: ExternalizedToolResultReference,
+): string {
+  return [
+    `${toolName} result externalized (${externalizedToolResult.charLength} chars)`,
+    `artifact: ${externalizedToolResult.storagePath}`,
+  ].join("\n");
 }
 
 function buildExternalizedSummary(toolName: string, rawOutput: string): string {

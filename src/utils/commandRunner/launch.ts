@@ -1,5 +1,6 @@
 import { loadExeca } from "../execa.js";
 import type { ResultPromise } from "execa";
+import { getShellRuntimeInfo } from "./shellRuntime.js";
 
 type LaunchedCommand = ResultPromise<{
   cwd: string;
@@ -22,8 +23,9 @@ export async function launchCommand(
   abortSignal?: AbortSignal,
 ): Promise<LaunchedCommandHandle> {
   const execa = await loadExeca();
-  const subprocess = process.platform === "win32"
-    ? execa("powershell.exe", ["-NoLogo", "-NoProfile", "-EncodedCommand", encodePowerShellCommand(command)], {
+  const shell = getShellRuntimeInfo();
+  const subprocess = shell.shell === "powershell"
+    ? execa(shell.executable, ["-NoLogo", "-NoProfile", "-EncodedCommand", encodePowerShellCommand(command)], {
         cwd,
         timeout: timeoutMs,
         cancelSignal: abortSignal,
@@ -32,7 +34,7 @@ export async function launchCommand(
         reject: false,
         env: buildCommandEnvironment(),
       })
-    : execa("/bin/bash", ["-lc", command], {
+    : execa(shell.executable, ["-lc", command], {
         cwd,
         timeout: timeoutMs,
         cancelSignal: abortSignal,

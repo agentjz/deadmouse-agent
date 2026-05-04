@@ -1,5 +1,6 @@
 import { noteSessionDiff } from "../session/sessionDiff.js";
 import { createMessage } from "../session/messages.js";
+import { projectToolResultForModel } from "../toolResults/modelProjection.js";
 import { createStoredToolMessage } from "../toolResults/storage.js";
 import { noteRuntimeToolExecution } from "../runtimeMetrics.js";
 import { persistToolBatchCheckpoint } from "./persistence.js";
@@ -159,10 +160,15 @@ export async function processToolCallBatch(input: ProcessToolCallBatchInput): Pr
     } else {
       options.callbacks?.onToolError?.(toolCall.function.name, result.output);
     }
+    const modelOutput = projectToolResultForModel({
+      toolName: toolCall.function.name,
+      result,
+    });
     const storedToolMessage = await createStoredToolMessage({
       toolCallId: toolCall.id,
       toolName: toolCall.function.name,
       rawOutput: result.output,
+      modelOutput,
       sessionId: session.id,
       projectContext,
     });

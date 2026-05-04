@@ -24,9 +24,13 @@ interface PatchPlan {
 
 interface PatchApplySummary {
   path: string;
-  absolutePath: string;
   kind: PatchPlan["kind"];
   hunks: number;
+}
+
+interface ParsedPatchBundle {
+  primary: StructuredPatch[];
+  fallback?: StructuredPatch[];
 }
 
 const patchLocks = new Map<string, Promise<void>>();
@@ -36,13 +40,13 @@ export const patchFileTool: RegisteredTool = {
     type: "function",
     function: {
       name: "patch_file",
-      description: "Apply a standard unified diff patch to one or more files. Use this for fast structural or multi-file edits; use edit_file for small anchored replacements after read_file.",
+      description: "Apply a unified diff patch to one or more files. Use this fast path for structural or multi-file edits. Patch format example:\n--- a/src/file.ts\n+++ b/src/file.ts\n@@ -1,3 +1,4 @@\n context line\n-old line\n+new line\n+added line\nHunk lines use - for removed text and + for added text. Unprefixed hunk lines are treated as unchanged context. Use edit_file for small precise replacements after read_file.",
       parameters: {
         type: "object",
         properties: {
           patch: {
             type: "string",
-            description: "Unified diff text with ---/+++ file headers and @@ hunks. Paths are resolved from the current working directory.",
+            description: "Unified diff text with ---/+++ file headers and explicit @@ -oldStart,oldCount +newStart,newCount @@ hunk ranges. Include enough unchanged context lines. Hunk lines starting with - remove text, + add text, and unprefixed lines are context. Paths are resolved from the current working directory.",
           },
           dry_run: {
             type: "boolean",
@@ -59,7 +63,7 @@ export const patchFileTool: RegisteredTool = {
     const patchText = readPossiblyEmptyString(args.patch, "patch");
     const dryRun = readBoolean(args.dry_run, false);
     const parsed = parseUnifiedPatch(patchText);
-    const lockPaths = buildPatchLockPaths(parsed, context.cwd);
+    const lockPaths = buildPatchLockPaths(parsed.primary, context.cwd);
 
     return withPatchLocks(lockPaths, async () => {
       const plans = await buildPatchPlans(parsed, context.cwd);
@@ -109,13 +113,9 @@ export const patchFileTool: RegisteredTool = {
             appliedFiles,
             appliedHunks: appliedFiles.reduce((total, file) => total + file.hunks, 0),
             changedPaths,
-            absoluteChangedPaths,
             changeId: changeRecord.change?.id,
             changeHistoryWarning: changeRecord.warning,
             diff: feedback.diff,
-            diagnostics: feedback.diagnostics,
-            sessionDiff: dryRun ? undefined : feedback.sessionDiff,
-            preview: feedback.diff,
           },
           null,
           2,
@@ -130,29 +130,73 @@ export const patchFileTool: RegisteredTool = {
   },
 };
 
-function parseUnifiedPatch(patchText: string): StructuredPatch[] {
+function parseUnifiedPatch(patchText: string): ParsedPatchBundle {
   if (!patchText.trim()) {
     throw new ToolExecutionError("patch_file requires non-empty unified diff text.", {
       code: "PATCH_EMPTY",
     });
   }
 
-  let parsed: StructuredPatch[];
+  let primary: StructuredPatch[];
   try {
-    parsed = parsePatch(patchText);
+    primary = parsePatch(patchText);
   } catch (error) {
-    throw new ToolExecutionError(`patch_file could not parse the unified diff: ${error instanceof Error ? error.message : String(error)}`, {
-      code: "PATCH_PARSE_FAILED",
-    });
+    const normalizedPatchText = normalizeBareContextLines(patchText);
+    try {
+      primary = parsePatch(normalizedPatchText);
+    } catch {
+      throw new ToolExecutionError(`patch_file could not parse the unified diff: ${error instanceof Error ? error.message : String(error)}`, {
+        code: "PATCH_PARSE_FAILED",
+      });
+    }
   }
 
-  if (parsed.length === 0) {
+  if (primary.length === 0) {
     throw new ToolExecutionError("patch_file did not find any file patches. Provide ---/+++ headers and @@ hunks.", {
       code: "PATCH_EMPTY",
     });
   }
 
-  return parsed;
+  const normalizedPatchText = normalizeBareContextLines(patchText);
+  const fallback = normalizedPatchText === patchText
+    ? undefined
+    : tryParsePatch(normalizedPatchText);
+
+  return {
+    primary,
+    fallback,
+  };
+}
+
+function normalizeBareContextLines(patchText: string): string {
+  let insideHunk = false;
+  return patchText
+    .split(/\r?\n/)
+    .map((line) => {
+      if (line.startsWith("@@ ")) {
+        insideHunk = true;
+        return line;
+      }
+      if (line.startsWith("--- ") || line.startsWith("+++ ")) {
+        insideHunk = false;
+        return line;
+      }
+      if (!insideHunk || line.startsWith("-") || line.startsWith("+") || line.startsWith("\\")) {
+        return line;
+      }
+
+      return ` ${line}`;
+    })
+    .join("\n");
+}
+
+function tryParsePatch(patchText: string): StructuredPatch[] | undefined {
+  try {
+    const parsed = parsePatch(patchText);
+    return parsed.length > 0 ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function buildPatchLockPaths(patches: StructuredPatch[], cwd: string): string[] {
@@ -173,9 +217,10 @@ function buildPatchLockPaths(patches: StructuredPatch[], cwd: string): string[] 
   });
 }
 
-async function buildPatchPlans(patches: StructuredPatch[], cwd: string): Promise<PatchPlan[]> {
+async function buildPatchPlans(parsed: ParsedPatchBundle, cwd: string): Promise<PatchPlan[]> {
   const plans: PatchPlan[] = [];
   const seenTargets = new Set<string>();
+  const patches = parsed.primary;
 
   for (let index = 0; index < patches.length; index += 1) {
     const patch = patches[index];
@@ -207,7 +252,7 @@ async function buildPatchPlans(patches: StructuredPatch[], cwd: string): Promise
     }
     seenTargets.add(resolvedPath);
 
-    plans.push(await buildPatchPlan(patch, targetPath, resolvedPath, index));
+    plans.push(await buildPatchPlan(patch, parsed.fallback?.[index], targetPath, resolvedPath, index));
   }
 
   return plans;
@@ -215,6 +260,7 @@ async function buildPatchPlans(patches: StructuredPatch[], cwd: string): Promise
 
 async function buildPatchPlan(
   patch: StructuredPatch,
+  fallbackPatch: StructuredPatch | undefined,
   targetPath: string,
   resolvedPath: string,
   patchIndex: number,
@@ -257,10 +303,21 @@ async function buildPatchPlan(
     });
   }
 
-  const after = applyPatch(envelope.text, patch, {
+  let appliedPatch = patch;
+  let after = applyPatch(envelope.text, patch, {
     fuzzFactor: 0,
     autoConvertLineEndings: false,
   });
+  if (after === false && fallbackPatch) {
+    const fallbackAfter = applyPatch(envelope.text, fallbackPatch, {
+      fuzzFactor: 0,
+      autoConvertLineEndings: false,
+    });
+    if (fallbackAfter !== false) {
+      appliedPatch = fallbackPatch;
+      after = fallbackAfter;
+    }
+  }
   if (after === false) {
     throw new ToolExecutionError(`patch_file could not apply hunk for ${targetPath}. Fresh read_file around the failed area, then choose edit_file or rewrite patch_file.`, {
       code: "PATCH_HUNK_NOT_FOUND",
@@ -279,7 +336,7 @@ async function buildPatchPlan(
   }
 
   return {
-    patch,
+    patch: appliedPatch,
     targetPath,
     resolvedPath,
     kind,
@@ -333,7 +390,6 @@ function toChangeOperation(plan: PatchPlan): PendingChangeOperation {
 function toApplySummary(plan: PatchPlan): PatchApplySummary {
   return {
     path: plan.targetPath,
-    absolutePath: plan.resolvedPath,
     kind: plan.kind,
     hunks: plan.patch.hunks.length,
   };

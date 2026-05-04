@@ -13,7 +13,7 @@ export const writeFileTool: RegisteredTool = {
     type: "function",
     function: {
       name: "write_file",
-      description: "Create a brand-new file with new content. Existing-file updates must go through read_file plus edit_file.",
+      description: "Write full file content. Use this for brand-new files or deliberate full-file rewrites; for small targeted changes, prefer edit_file or patch_file.",
       parameters: {
         type: "object",
         properties: {
@@ -79,17 +79,12 @@ export const writeFileTool: RegisteredTool = {
       JSON.stringify(
           {
           path: displayPath,
-          absolutePath: resolved,
           existed,
           bytes: Buffer.byteLength(content, "utf8"),
           changedPaths: [displayPath],
-          absoluteChangedPaths: [resolved],
           changeId: changeRecord.change?.id,
           changeHistoryWarning: changeRecord.warning,
           diff: feedback.diff,
-          diagnostics: feedback.diagnostics,
-          sessionDiff: feedback.sessionDiff,
-          preview: truncateText(preview, 6_000),
         },
         null,
         2,

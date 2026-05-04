@@ -542,13 +542,10 @@ test("beforeToolCall blocks and afterToolCall failures become formal tool errors
   const toolMessages = result.session.messages.filter((message) => message.role === "tool");
   assert.equal(toolMessages.length, 2);
 
-  const blockedPayload = JSON.parse(String(toolMessages[0]?.content ?? "{}")) as Record<string, unknown>;
-  const failedPayload = JSON.parse(String(toolMessages[1]?.content ?? "{}")) as Record<string, unknown>;
-
-  assert.equal(blockedPayload.code, "TOOL_HOOK_BLOCKED");
-  assert.equal((blockedPayload.protocol as Record<string, unknown>).status, "blocked");
-  assert.equal(failedPayload.code, "TOOL_HOOK_FAILED");
-  assert.equal((failedPayload.protocol as Record<string, unknown>).status, "failed");
+  assert.match(String(toolMessages[0]?.content ?? ""), /TOOL_HOOK_BLOCKED/);
+  assert.match(String(toolMessages[0]?.content ?? ""), /blocked by before hook/);
+  assert.match(String(toolMessages[1]?.content ?? ""), /TOOL_HOOK_FAILED/);
+  assert.match(String(toolMessages[1]?.content ?? ""), /after hook exploded/);
 });
 
 test("unknown tool names become tool failure facts instead of breaking the turn", async (t) => {
@@ -587,9 +584,7 @@ test("unknown tool names become tool failure facts instead of breaking the turn"
   assert.equal(result.yielded, false);
   const toolMessage = result.session.messages.find((message) => message.role === "tool" && message.name === "bg_check_job");
   assert(toolMessage);
-  const payload = JSON.parse(String(toolMessage.content ?? "{}")) as Record<string, unknown>;
-  assert.equal(payload.ok, false);
-  assert.equal(payload.error, "Unknown tool: bg_check_job");
-  assert.match(String(payload.hint ?? ""), /exposed tool list/i);
+  assert.match(String(toolMessage.content ?? ""), /Unknown tool: bg_check_job/);
+  assert.match(String(toolMessage.content ?? ""), /exposed tool list/i);
 });
 

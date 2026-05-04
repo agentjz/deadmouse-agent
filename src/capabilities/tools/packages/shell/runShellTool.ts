@@ -1,18 +1,21 @@
 import { ToolExecutionError } from "../../core/errors.js";
 import { buildForegroundProcessProtocol } from "../../../../execution/processProtocol.js";
-import { resolveUserPath } from "../../../../utils/fs.js";
+import { resolveUserPath, truncateText } from "../../../../utils/fs.js";
 import { classifyCommand } from "../../../../utils/commandPolicy.js";
 import { runCommandWithPolicy } from "../../../../utils/commandRunner.js";
+import { getShellRuntimeInfo } from "../../../../utils/commandRunner/shellRuntime.js";
 import { clampNumber, okResult, parseArgs, readString } from "../../core/shared.js";
 import type { RegisteredTool } from "../../core/types.js";
 import type { ToolExecutionMetadata } from "../../../../types.js";
+
+const SHELL_RUNTIME = getShellRuntimeInfo();
 
 export const runShellTool: RegisteredTool = {
   definition: {
     type: "function",
     function: {
       name: "run_shell",
-      description: "Run a local terminal command in the current working directory or another directory. For webpages, use lightweight network tools first and treat shell fetching as fallback.",
+      description: `Run a local terminal command in the current working directory or another directory. Current default shell: ${SHELL_RUNTIME.shell} (${SHELL_RUNTIME.invocation}). ${SHELL_RUNTIME.guidance} For webpages, use lightweight network tools first and treat shell fetching as fallback.`,
       parameters: {
         type: "object",
         properties: {
@@ -40,6 +43,7 @@ export const runShellTool: RegisteredTool = {
     const shellCwd = typeof args.cwd === "string" ? args.cwd : context.cwd;
     const timeoutMs = clampNumber(args.timeout_ms, 1_000, 600_000, 120_000);
     const resolvedCwd = resolveUserPath(shellCwd, context.cwd);
+    const shell = getShellRuntimeInfo();
     const classification = classifyCommand(command);
     const stallTimeoutMs = clampNumber(
       context.config.commandStallTimeoutMs,
@@ -112,18 +116,26 @@ export const runShellTool: RegisteredTool = {
           cwd: resolvedCwd,
           exitCode: result.exitCode,
           status,
-          attempts: result.attempts,
           durationMs: result.durationMs,
-          stalled: result.stalled,
-          timedOut: result.timedOut,
-          aborted: result.aborted,
+          attempts: result.attempts,
           truncated: result.truncated,
           outputPath: result.outputPath,
           outputChars: result.outputChars,
           outputBytes: result.outputBytes,
-          commandKind: classification.kind,
-          process,
-          output: result.output,
+          output: truncateText(result.output, 4_000),
+          ...(status === "completed"
+            ? {}
+            : {
+                shell: shell.shell,
+                platform: shell.platform,
+                shellInvocation: shell.invocation,
+                shellGuidance: shell.guidance,
+                stalled: result.stalled,
+                timedOut: result.timedOut,
+                aborted: result.aborted,
+                commandKind: classification.kind,
+                process,
+              }),
         },
         null,
         2,

@@ -208,7 +208,6 @@ test("runtime checkpoint persists a structured checkpoint after yield and keeps 
   const storedToolMessage = saved.messages.find(
     (message) => message.role === "tool" && message.name === "emit_large_checkpoint",
   );
-  const storedPayload = storedToolMessage?.content ? JSON.parse(storedToolMessage.content) : null;
 
   assert.equal(checkpoint?.objective, "Capture the first checkpoint artifact, then continue from it without restarting.");
   assert.equal(checkpoint?.flow?.phase, "continuation");
@@ -219,7 +218,7 @@ test("runtime checkpoint persists a structured checkpoint after yield and keeps 
   assert.equal(checkpoint?.flow?.runState?.status, "idle");
   assert.equal(
     checkpoint?.evidenceArtifacts?.some((artifact: Record<string, unknown>) =>
-      artifact.toolName === "emit_large_checkpoint" && artifact.storagePath === storedPayload?.storagePath
+      artifact.toolName === "emit_large_checkpoint" && artifact.storagePath === storedToolMessage?.externalizedToolResult?.storagePath
     ),
     true,
   );

@@ -9,8 +9,8 @@ import { InProcessSessionStore } from "../../src/agent/session.js";
 import { createToolRegistry } from "../../src/capabilities/tools/core/registry.js";
 import { createTempWorkspace, createTestRuntimeConfig, makeToolContext } from "../helpers.js";
 
-test("read_file returns fine-grained anchors and edit_file uses them to disambiguate repeated matches", async (t) => {
-  const root = await createTempWorkspace("edit-anchors", t);
+test("edit_file uses an optional line hint to disambiguate repeated matches", async (t) => {
+  const root = await createTempWorkspace("edit-line-hint", t);
   const filePath = path.join(root, "story.txt");
   await fs.writeFile(filePath, "beta\nalpha\nbeta\n", "utf8");
 
@@ -23,25 +23,19 @@ test("read_file returns fine-grained anchors and edit_file uses them to disambig
     makeToolContext(root, root) as never,
   );
   const readPayload = JSON.parse(readResult.output) as Record<string, unknown>;
-  const anchors = readPayload.anchors as Array<Record<string, unknown>>;
-  const identity = readPayload.identity as Record<string, unknown>;
-
-  assert.equal(Array.isArray(anchors), true);
-  assert.equal(anchors.length >= 3, true);
-
-  const thirdLineAnchor = anchors.find((anchor) => anchor.line === 3);
-  assert.ok(thirdLineAnchor);
+  assert.match(String(readPayload.content ?? ""), /3 \| beta/);
+  assert.equal(Object.hasOwn(readPayload, "anchors"), false);
+  assert.equal(Object.hasOwn(readPayload, "identity"), false);
 
   const editResult = await registry.execute(
     "edit_file",
     JSON.stringify({
       path: "story.txt",
-      expected_identity: identity,
       edits: [
         {
-          anchor: thirdLineAnchor,
           old_string: "beta",
           new_string: "BETA",
+          line: 3,
         },
       ],
     }),
@@ -53,47 +47,39 @@ test("read_file returns fine-grained anchors and edit_file uses them to disambig
   assert.equal(editResult.ok, true);
   assert.equal(payload.appliedEdits, 1);
   assert.deepEqual(payload.changedPaths, ["story.txt"]);
-  assert.deepEqual(payload.absoluteChangedPaths, [filePath]);
   assert.equal(updated, "beta\nalpha\nBETA\n");
 });
 
-test("edit_file rejects existing-file edits that omit formal anchors", async (t) => {
-  const root = await createTempWorkspace("edit-anchors-required", t);
+test("edit_file rejects ambiguous edits and returns fresh read evidence", async (t) => {
+  const root = await createTempWorkspace("edit-ambiguous", t);
   await fs.writeFile(path.join(root, "story.txt"), "alpha\nbeta\n", "utf8");
 
   const registry = createToolRegistry();
-  const readResult = await registry.execute(
-    "read_file",
-    JSON.stringify({
-      path: "story.txt",
-    }),
-    makeToolContext(root, root) as never,
+  await assert.rejects(
+    () =>
+      registry.execute(
+        "edit_file",
+        JSON.stringify({
+          path: "story.txt",
+          edits: [
+            {
+              old_string: "a",
+              new_string: "BETA",
+            },
+          ],
+        }),
+        makeToolContext(root, root) as never,
+      ),
+    (error) => {
+      assert.equal((error as { code?: string }).code, "EDIT_AMBIGUOUS");
+      assert.equal(typeof ((error as { details?: Record<string, unknown> }).details?.readArgs), "object");
+      assert.match(String((error as Error).message), /multiple/i);
+      return true;
+    },
   );
-  const identity = (JSON.parse(readResult.output) as Record<string, unknown>).identity;
-
-  const result = await registry.execute(
-    "edit_file",
-    JSON.stringify({
-      path: "story.txt",
-      expected_identity: identity,
-      edits: [
-        {
-          old_string: "beta",
-          new_string: "BETA",
-        },
-      ],
-    }),
-    makeToolContext(root, root) as never,
-  );
-  const payload = JSON.parse(result.output) as Record<string, unknown>;
-
-  assert.equal(result.ok, false);
-  assert.equal(payload.code, "INVALID_TOOL_ARGUMENTS");
-  assert.equal((payload.details as { kind?: unknown } | undefined)?.kind, "required");
-  assert.match(String(payload.error ?? ""), /anchor|required/i);
 });
 
-test("edit_file preserves UTF-8 BOM and CRLF while editing from fresh read anchors", async (t) => {
+test("edit_file preserves UTF-8 BOM and CRLF while editing current target text", async (t) => {
   const root = await createTempWorkspace("edit-bom-crlf", t);
   const filePath = path.join(root, "story.txt");
   await fs.writeFile(filePath, Buffer.concat([
@@ -109,21 +95,17 @@ test("edit_file preserves UTF-8 BOM and CRLF while editing from fresh read ancho
     }),
     makeToolContext(root, root) as never,
   );
-  const readPayload = JSON.parse(readResult.output) as Record<string, unknown>;
-  const identity = readPayload.identity as Record<string, unknown>;
-  const anchors = readPayload.anchors as Array<Record<string, unknown>>;
-  const betaAnchor = anchors.find((anchor) => anchor.line === 2);
+  assert.match(readResult.output, /2 \| beta/);
 
   const editResult = await registry.execute(
     "edit_file",
     JSON.stringify({
       path: "story.txt",
-      expected_identity: identity,
       edits: [
         {
-          anchor: betaAnchor,
           old_string: "beta",
           new_string: "BETA",
+          line: 2,
         },
       ],
     }),
@@ -136,7 +118,7 @@ test("edit_file preserves UTF-8 BOM and CRLF while editing from fresh read ancho
   assert.equal(after.toString("utf8"), "\uFEFFalpha\r\nBETA\r\ngamma\r\n");
 });
 
-test("edit_file can apply two independent edits from one read without refreshing whole-file identity", async (t) => {
+test("edit_file can apply two independent edits without refreshing the whole file", async (t) => {
   const root = await createTempWorkspace("edit-repeat-without-refresh", t);
   const filePath = path.join(root, "story.txt");
   await fs.writeFile(filePath, "alpha\nbeta\ngamma\n", "utf8");
@@ -149,20 +131,17 @@ test("edit_file can apply two independent edits from one read without refreshing
     }),
     makeToolContext(root, root) as never,
   );
-  const readPayload = JSON.parse(readResult.output) as Record<string, unknown>;
-  const identity = readPayload.identity as Record<string, unknown>;
-  const anchors = readPayload.anchors as Array<Record<string, unknown>>;
+  assert.match(readResult.output, /2 \| beta/);
 
   const first = await registry.execute(
     "edit_file",
     JSON.stringify({
       path: "story.txt",
-      expected_identity: identity,
       edits: [
         {
-          anchor: anchors.find((anchor) => anchor.line === 2),
           old_string: "beta",
           new_string: "BETA",
+          line: 2,
         },
       ],
     }),
@@ -172,12 +151,11 @@ test("edit_file can apply two independent edits from one read without refreshing
     "edit_file",
     JSON.stringify({
       path: "story.txt",
-      expected_identity: identity,
       edits: [
         {
-          anchor: anchors.find((anchor) => anchor.line === 3),
           old_string: "gamma",
           new_string: "GAMMA",
+          line: 3,
         },
       ],
     }),
@@ -207,7 +185,7 @@ test("write_file can create an empty file without routing through shell", async 
   assert.equal(await fs.readFile(filePath, "utf8"), "");
 });
 
-test("write_file returns formal diff, diagnostics, and session diff feedback after a write", async (t) => {
+test("write_file returns short success output while metadata keeps diagnostics and session diff", async (t) => {
   const root = await createTempWorkspace("write-feedback", t);
   const registry = createToolRegistry();
 
@@ -220,18 +198,13 @@ test("write_file returns formal diff, diagnostics, and session diff feedback aft
     makeToolContext(root, root) as never,
   );
   const payload = JSON.parse(result.output) as Record<string, unknown>;
-  const diagnostics = payload.diagnostics as Record<string, unknown>;
-  const sessionDiff = payload.sessionDiff as Record<string, unknown>;
 
   assert.equal(result.ok, true);
   assert.equal(typeof payload.diff, "string");
-  assert.equal(diagnostics.status, "issues");
-  assert.equal((diagnostics.errorCount as number) >= 1, true);
-  assert.equal(Array.isArray(diagnostics.files), true);
-  assert.equal(Array.isArray(sessionDiff.changedPaths), true);
-  assert.deepEqual(sessionDiff.changedPaths, [path.join(root, "broken.json")]);
   assert.deepEqual(payload.changedPaths, ["broken.json"]);
-  assert.deepEqual(payload.absoluteChangedPaths, [path.join(root, "broken.json")]);
+  assert.equal(Object.hasOwn(payload, "diagnostics"), false);
+  assert.equal(Object.hasOwn(payload, "sessionDiff"), false);
+  assert.equal(Object.hasOwn(payload, "absoluteChangedPaths"), false);
   assert.equal(result.metadata?.diagnostics?.status, "issues");
   assert.deepEqual(result.metadata?.sessionDiff?.changedPaths, [path.join(root, "broken.json")]);
 });

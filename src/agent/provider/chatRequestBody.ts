@@ -26,9 +26,18 @@ export function buildProviderRequestBody(
     model: input.model,
     messages: toChatCompletionMessages(input.messages),
     tools: input.tools,
-    tool_choice: input.tools?.length ? "auto" : undefined,
     stream: input.stream,
   };
+
+  if (capabilities.provider !== "deepseek" && input.tools?.length) {
+    body.tool_choice = "auto";
+  }
+
+  if (input.stream) {
+    body.stream_options = {
+      include_usage: true,
+    };
+  }
 
   if (typeof input.maxOutputTokens === "number" && Number.isFinite(input.maxOutputTokens)) {
     body.max_tokens = Math.max(1, Math.trunc(input.maxOutputTokens));
@@ -60,6 +69,8 @@ function resolveDeepSeekThinking(
 function hasUnreplayableAssistantReasoning(messages: ProviderMessage[]): boolean {
   return messages.some((message) =>
     message.role === "assistant" &&
+    Array.isArray(message.toolCalls) &&
+    message.toolCalls.length > 0 &&
     message.reasoningContent === undefined,
   );
 }
@@ -67,9 +78,13 @@ function hasUnreplayableAssistantReasoning(messages: ProviderMessage[]): boolean
 function normalizeDeepSeekReasoningEffort(
   effort: "minimal" | "low" | "medium" | "high" | "xhigh" | "max" | undefined,
 ): "high" | "max" {
-  if (effort === undefined || effort === "high" || effort === "max") {
-    return effort ?? "high";
+  if (effort === undefined || effort === "minimal" || effort === "low" || effort === "medium" || effort === "high") {
+    return "high";
   }
 
-  throw new Error(`DeepSeek V4 reasoning_effort must be high or max, received ${effort}`);
+  if (effort === "xhigh" || effort === "max") {
+    return "max";
+  }
+
+  return "high";
 }

@@ -18,21 +18,27 @@ export async function loadProjectIgnoreRules(rootDir: string, cwd: string): Prom
     }))
     .filter((rule): rule is ProjectIgnoreRule => Boolean(rule));
 
-  const candidateFiles = uniquePaths([
-    path.join(rootDir, ".kitty", ".kittyignore"),
-    path.join(cwd, ".kitty", ".kittyignore"),
+  const candidateFiles = uniqueIgnoreFiles([
+    {
+      path: path.join(rootDir, ".kitty", ".kittyignore"),
+      baseDir: rootDir,
+    },
+    {
+      path: path.join(cwd, ".kitty", ".kittyignore"),
+      baseDir: cwd,
+    },
   ]);
 
-  for (const filePath of candidateFiles) {
+  for (const candidate of candidateFiles) {
+    const filePath = candidate.path;
     const content = await tryReadUtf8File(filePath);
     if (content === null) {
       continue;
     }
 
-    const baseDir = path.dirname(filePath);
     for (const line of content.split(/\r?\n/)) {
       const rule = compileIgnoreRule(line, {
-        baseDir,
+        baseDir: candidate.baseDir,
         source: filePath,
       });
       if (rule) {
@@ -66,6 +72,34 @@ export function isPathIgnored(
   }
 
   return ignored;
+}
+
+export function buildFastGlobIgnorePatterns(baseDir: string, rules: ProjectIgnoreRule[]): string[] {
+  if (rules.some((rule) => rule.negated)) {
+    return [];
+  }
+
+  const patterns: string[] = [];
+
+  for (const rule of rules) {
+    if (rule.negated) {
+      continue;
+    }
+
+    const relativeBase = toRelativePosix(baseDir, rule.baseDir);
+    if (relativeBase === null) {
+      continue;
+    }
+
+    const pattern = normalizeFastGlobIgnorePattern(rule);
+    if (!pattern) {
+      continue;
+    }
+
+    patterns.push(relativeBase ? `${relativeBase}/${pattern}` : pattern);
+  }
+
+  return [...new Set(patterns)];
 }
 
 export function getDefaultKittyIgnoreContent(): string {
@@ -112,6 +146,7 @@ function compileIgnoreRule(
   pattern = pattern.replace(/\\/g, "/").replace(/^\.\/+/, "");
   const directoryOnly = pattern.endsWith("/");
   const anchored = pattern.startsWith("/");
+  const originalHadSlash = pattern.includes("/");
 
   if (directoryOnly) {
     pattern = pattern.replace(/\/+$/, "");
@@ -125,7 +160,7 @@ function compileIgnoreRule(
     return null;
   }
 
-  if (!pattern.includes("/")) {
+  if (!originalHadSlash) {
     pattern = `**/${pattern}`;
   } else if (!anchored && !pattern.startsWith("**/")) {
     pattern = `**/${pattern}`;
@@ -141,6 +176,7 @@ function compileIgnoreRule(
     baseDir: options.baseDir,
     negated,
     directoryOnly,
+    anchored,
     matcher: new RegExp(`^${globToRegex(pattern)}$`),
   };
 }
@@ -160,6 +196,30 @@ function toRelativePosix(baseDir: string, targetPath: string): string | null {
 
 function ensureTrailingSlash(value: string): string {
   return value.endsWith("/") ? value : `${value}/`;
+}
+
+function normalizeFastGlobIgnorePattern(rule: ProjectIgnoreRule): string | null {
+  const trimmed = rule.pattern.trim();
+  if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("!")) {
+    return null;
+  }
+
+  let pattern = trimmed.replace(/\\/g, "/").replace(/^\.\/+/, "").replace(/^\/+/, "");
+  if (!pattern) {
+    return null;
+  }
+
+  if (pattern.endsWith("/")) {
+    pattern = `${pattern}**`;
+  }
+
+  if (!pattern.includes("/")) {
+    pattern = `**/${pattern}`;
+  } else if (!rule.anchored && !pattern.startsWith("**/")) {
+    pattern = `**/${pattern}`;
+  }
+
+  return pattern;
 }
 
 function globToRegex(pattern: string): string {
@@ -206,6 +266,22 @@ function escapeRegex(value: string): string {
   return value.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
 }
 
-function uniquePaths(paths: string[]): string[] {
-  return [...new Set(paths.map((item) => path.normalize(item)))];
+function uniqueIgnoreFiles(files: Array<{ path: string; baseDir: string }>): Array<{ path: string; baseDir: string }> {
+  const seen = new Set<string>();
+  const unique: Array<{ path: string; baseDir: string }> = [];
+
+  for (const file of files) {
+    const normalizedPath = path.normalize(file.path);
+    if (seen.has(normalizedPath)) {
+      continue;
+    }
+
+    seen.add(normalizedPath);
+    unique.push({
+      path: normalizedPath,
+      baseDir: path.resolve(file.baseDir),
+    });
+  }
+
+  return unique;
 }

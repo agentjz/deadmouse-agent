@@ -3,9 +3,9 @@ import fs from "node:fs/promises";
 import fg from "fast-glob";
 
 import { resolveUserPath } from "../../../../utils/fs.js";
-import { isPathIgnored } from "../../../../utils/ignore.js";
+import { buildFastGlobIgnorePatterns, isPathIgnored } from "../../../../utils/ignore.js";
 import { toToolRelativePath } from "../../core/pathDisplay.js";
-import { buildSearchPattern, clampNumber, okResult, parseArgs, readBoolean, readString, tryReadTextFile } from "../../core/shared.js";
+import { buildSearchPattern, clampNumber, comparePathForDiscovery, okResult, parseArgs, readBoolean, readString, tryReadTextFile } from "../../core/shared.js";
 import type { RegisteredTool } from "../../core/types.js";
 
 export const searchFilesTool: RegisteredTool = {
@@ -78,10 +78,11 @@ export const searchFilesTool: RegisteredTool = {
             dot: true,
             suppressErrors: true,
             onlyFiles: true,
-            ignore: ["**/.git/**", "**/node_modules/**", "**/dist/**", "**/coverage/**"],
+            ignore: buildFastGlobIgnorePatterns(resolved, context.projectContext.ignoreRules),
           })
         )
           .filter((filePath) => !isPathIgnored(filePath, context.projectContext.ignoreRules))
+          .sort((left, right) => comparePathForDiscovery(resolved, left, right))
           .slice(0, 2_000)
       : [resolved];
 

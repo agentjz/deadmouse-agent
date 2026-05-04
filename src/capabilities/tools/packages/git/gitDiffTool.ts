@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 
 import { truncateText } from "../../../../utils/fs.js";
 import { clampNumber, normalizeDiffPath, okResult, parseArgs, readBoolean } from "../../core/shared.js";
-import { readGitStatusSnapshot, resolveGitRoot, runGit } from "./gitShared.js";
+import { readGitStatusSnapshot, resolveGitScope, runGit } from "./gitShared.js";
 import type { RegisteredTool } from "../../core/types.js";
 
 export const gitDiffTool: RegisteredTool = {
@@ -42,12 +42,13 @@ export const gitDiffTool: RegisteredTool = {
   },
   async execute(rawArgs, context) {
     const args = parseArgs(rawArgs);
-    const root = await resolveGitRoot(context, typeof args.path === "string" ? args.path : undefined);
+    const scope = await resolveGitScope(context, typeof args.path === "string" ? args.path : undefined);
+    const root = scope.root;
     const staged = readBoolean(args.staged, false);
     const includeStat = readBoolean(args.stat, true);
     const includeUntracked = readBoolean(args.include_untracked, false);
     const maxChars = clampNumber(args.max_chars, 1_000, 200_000, 40_000);
-    const pathFilter = typeof args.path === "string" && args.path.trim() ? args.path.trim() : undefined;
+    const pathFilter = scope.pathspec;
     const diffArgs = ["diff", "--no-ext-diff", "--", ...(pathFilter ? [pathFilter] : [])];
     if (staged) {
       diffArgs.splice(1, 0, "--cached");
@@ -104,7 +105,6 @@ async function readUntrackedDiffs(
   stats: NumstatSummary;
 }> {
   const snapshot = await readGitStatusSnapshot(context, {
-    path: pathFilter,
     includeUntracked: true,
   });
   const normalizedFilter = pathFilter?.replace(/\\/g, "/").replace(/\/$/, "");

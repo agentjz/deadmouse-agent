@@ -13,6 +13,7 @@ export interface ProjectIgnoreRule {
   baseDir: string;
   negated: boolean;
   directoryOnly: boolean;
+  anchored: boolean;
   matcher: RegExp;
 }
 

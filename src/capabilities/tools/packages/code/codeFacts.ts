@@ -4,8 +4,8 @@ import path from "node:path";
 import fg from "fast-glob";
 
 import { resolveUserPath } from "../../../../utils/fs.js";
-import { isPathIgnored } from "../../../../utils/ignore.js";
-import { buildSearchPattern, tryReadTextFile } from "../../core/shared.js";
+import { buildFastGlobIgnorePatterns, isPathIgnored } from "../../../../utils/ignore.js";
+import { buildSearchPattern, comparePathForDiscovery, tryReadTextFile } from "../../core/shared.js";
 import type { ToolContext } from "../../core/types.js";
 
 export type CodeSymbolKind =
@@ -65,7 +65,7 @@ export async function collectCodeFiles(
         dot: true,
         onlyFiles: true,
         suppressErrors: true,
-        ignore: ["**/.git/**", "**/node_modules/**", "**/dist/**", "**/coverage/**"],
+        ignore: buildFastGlobIgnorePatterns(root, context.projectContext.ignoreRules),
       })
     : [resolved];
 
@@ -73,7 +73,7 @@ export async function collectCodeFiles(
     root,
     files: files
       .filter((filePath) => !isPathIgnored(filePath, context.projectContext.ignoreRules))
-      .sort((left, right) => left.localeCompare(right))
+      .sort((left, right) => comparePathForDiscovery(root, left, right))
       .slice(0, maxFiles),
   };
 }

@@ -3,8 +3,9 @@ import path from "node:path";
 import fg from "fast-glob";
 
 import type { ProjectContext } from "../../../types.js";
-import { isPathIgnored } from "../../../utils/ignore.js";
+import { buildFastGlobIgnorePatterns, isPathIgnored } from "../../../utils/ignore.js";
 import { normalizeUserPathInput } from "../../../utils/fs.js";
+import { comparePathForDiscovery } from "./shared.js";
 
 export async function findPathSuggestions(
   cwd: string,
@@ -31,10 +32,10 @@ export async function findPathSuggestions(
       markDirectories: true,
       caseSensitiveMatch: false,
       suppressErrors: true,
-      ignore: ["**/.git/**", "**/node_modules/**", "**/dist/**", "**/coverage/**"],
+      ignore: buildFastGlobIgnorePatterns(cwd, projectContext.ignoreRules),
     });
 
-    for (const entry of entries) {
+    for (const entry of entries.sort((left, right) => comparePathForDiscovery(cwd, path.resolve(cwd, left), path.resolve(cwd, right)))) {
       const absolutePath = path.resolve(cwd, entry);
       const isDirectory = entry.endsWith("/");
       if (isPathIgnored(absolutePath, projectContext.ignoreRules, isDirectory)) {

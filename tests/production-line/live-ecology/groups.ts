@@ -57,7 +57,7 @@ const LIVE_GROUP_PROMPTS: Record<string, string[]> = {
     "Inside __RUN_DIR__, first use write_file to create utf8-sample.txt with exactly these three lines: alpha, beta, gamma.",
     "Then call read_file on utf8-sample.txt to observe the current content.",
     "Then call patch_file for a successful minimal unified diff that changes only beta to BETA in utf8-sample.txt. Do not skip patch_file. Do not replace this step with edit_file. A parse or hunk failure is a real tool failure and does not count as coverage.",
-    "Then call read_file again and use edit_file to change gamma to GAMMA from fresh identity and anchors.",
+    "Then call read_file again and use edit_file to change gamma to GAMMA from the current target text, with a line hint if useful.",
     "Then call undo_last_change once, undoing only the edit_file change created inside __RUN_DIR__, leaving the patch_file change in place.",
     "After undo_last_change, call read_file to verify the final sample content is alpha, BETA, gamma.",
     "If useful, write one non-empty report file under __RUN_DIR__. The recommended path is __RUN_DIR__/patch-edit-tools-report.md.",

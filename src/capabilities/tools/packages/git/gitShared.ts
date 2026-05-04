@@ -30,6 +30,11 @@ export interface GitStatusSnapshot {
   };
 }
 
+export interface GitScope {
+  root: string;
+  pathspec?: string;
+}
+
 export async function runGit(
   context: ToolContext,
   args: string[],
@@ -69,6 +74,69 @@ export async function resolveGitRoot(context: ToolContext, cwd?: string): Promis
   return path.resolve(result.stdout.trim());
 }
 
+export async function resolveGitScope(context: ToolContext, inputPath?: string): Promise<GitScope> {
+  const root = await resolveGitRoot(context, inputPath);
+  const trimmedPath = inputPath?.trim();
+  if (!trimmedPath) {
+    return { root };
+  }
+
+  const resolvedPath = path.resolve(resolveUserPath(trimmedPath, context.cwd));
+  const relativePath = await resolveGitRelativePath(root, resolvedPath);
+  if (!relativePath) {
+    return { root };
+  }
+  if (relativePath === ".." || relativePath.startsWith("../")) {
+    throw new Error(`Git path is outside the worktree: ${trimmedPath}`);
+  }
+
+  return {
+    root,
+    pathspec: relativePath,
+  };
+}
+
+async function resolveGitRelativePath(root: string, resolvedPath: string): Promise<string> {
+  const direct = normalizeGitRelativePath(root, resolvedPath);
+  if (!isOutsideGitRoot(direct)) {
+    return direct;
+  }
+
+  const realRoot = await realpathIfExists(root);
+  const realResolvedPath = await realpathTargetOrParent(resolvedPath);
+  const realRelative = normalizeGitRelativePath(realRoot, realResolvedPath);
+  if (!isOutsideGitRoot(realRelative)) {
+    return realRelative;
+  }
+
+  return direct;
+}
+
+function normalizeGitRelativePath(root: string, resolvedPath: string): string {
+  return path.relative(root, resolvedPath).replace(/\\/g, "/");
+}
+
+function isOutsideGitRoot(relativePath: string): boolean {
+  return relativePath === ".." || relativePath.startsWith("../") || path.isAbsolute(relativePath);
+}
+
+async function realpathIfExists(resolvedPath: string): Promise<string> {
+  try {
+    return await fs.realpath(resolvedPath);
+  } catch {
+    return resolvedPath;
+  }
+}
+
+async function realpathTargetOrParent(resolvedPath: string): Promise<string> {
+  try {
+    return await fs.realpath(resolvedPath);
+  } catch {
+    const parent = await realpathIfExists(path.dirname(resolvedPath));
+    return path.join(parent, path.basename(resolvedPath));
+  }
+}
+
 async function resolveGitProbeCwd(resolvedPath: string): Promise<string> {
   try {
     const stat = await fs.stat(resolvedPath);
@@ -86,7 +154,8 @@ export async function readGitStatusSnapshot(
     includeUntracked?: boolean;
   } = {},
 ): Promise<GitStatusSnapshot> {
-  const root = await resolveGitRoot(context, input.path);
+  const scope = await resolveGitScope(context, input.path);
+  const root = scope.root;
   const branchResult = await runGit(context, ["branch", "--show-current"], { cwd: root });
   const statusArgs = ["status", "--porcelain=v1", "-z"];
   if (input.includeIgnored) {
@@ -95,8 +164,11 @@ export async function readGitStatusSnapshot(
   if (!input.includeUntracked) {
     statusArgs.push("--untracked-files=no");
   }
+  if (scope.pathspec) {
+    statusArgs.push("--", scope.pathspec);
+  }
   const statusResult = await runGit(context, statusArgs, { cwd: root });
-  const files = parsePorcelainStatus(statusResult.stdout);
+  const files = await expandUntrackedDirectories(root, parsePorcelainStatus(statusResult.stdout));
 
   return {
     root,
@@ -104,6 +176,56 @@ export async function readGitStatusSnapshot(
     files,
     summary: summarizeStatus(files),
   };
+}
+
+async function expandUntrackedDirectories(root: string, files: GitFileStatus[]): Promise<GitFileStatus[]> {
+  const expanded: GitFileStatus[] = [];
+
+  for (const file of files) {
+    if (!file.untracked || !file.path.endsWith("/")) {
+      expanded.push(file);
+      continue;
+    }
+
+    const absolutePath = path.join(root, file.path);
+    const nestedFiles = await collectFiles(absolutePath);
+    if (nestedFiles.length === 0) {
+      expanded.push(file);
+      continue;
+    }
+
+    for (const nestedFile of nestedFiles) {
+      expanded.push({
+        ...file,
+        path: path.relative(root, nestedFile).replace(/\\/g, "/"),
+      });
+    }
+  }
+
+  return expanded.sort((left, right) => left.path.localeCompare(right.path));
+}
+
+async function collectFiles(root: string): Promise<string[]> {
+  const results: string[] = [];
+  let entries;
+
+  try {
+    entries = await fs.readdir(root, { withFileTypes: true });
+  } catch {
+    return results;
+  }
+
+  entries.sort((left, right) => left.name.localeCompare(right.name));
+  for (const entry of entries) {
+    const entryPath = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...await collectFiles(entryPath));
+    } else if (entry.isFile()) {
+      results.push(entryPath);
+    }
+  }
+
+  return results;
 }
 
 export function parsePorcelainStatus(stdout: string): GitFileStatus[] {

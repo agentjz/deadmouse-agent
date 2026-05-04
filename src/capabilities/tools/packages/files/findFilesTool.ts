@@ -4,8 +4,8 @@ import path from "node:path";
 import fg from "fast-glob";
 
 import { resolveUserPath } from "../../../../utils/fs.js";
-import { isPathIgnored } from "../../../../utils/ignore.js";
-import { clampNumber, okResult, parseArgs, readString } from "../../core/shared.js";
+import { buildFastGlobIgnorePatterns, isPathIgnored } from "../../../../utils/ignore.js";
+import { clampNumber, comparePathForDiscovery, okResult, parseArgs, readString } from "../../core/shared.js";
 import type { RegisteredTool } from "../../core/types.js";
 
 export const findFilesTool: RegisteredTool = {
@@ -49,13 +49,13 @@ export const findFilesTool: RegisteredTool = {
       dot: true,
       onlyFiles: true,
       suppressErrors: true,
-      ignore: ["**/.git/**", "**/node_modules/**", "**/dist/**", "**/coverage/**"],
+      ignore: buildFastGlobIgnorePatterns(searchRoot, context.projectContext.ignoreRules),
     });
 
     const filtered = absoluteMatches
       .filter((filePath) => normalizePath(filePath) === normalizePath(resolved) || stats.isDirectory())
       .filter((filePath) => !isPathIgnored(filePath, context.projectContext.ignoreRules))
-      .sort((left, right) => left.localeCompare(right));
+      .sort((left, right) => comparePathForDiscovery(searchRoot, left, right));
     const files = filtered.slice(0, limit).map((filePath) => toRelativeDisplayPath(searchRoot, filePath));
 
     return okResult(
