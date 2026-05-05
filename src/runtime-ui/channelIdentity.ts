@@ -12,26 +12,6 @@ export const RUNTIME_UI_CHANNEL_IDENTITIES: Record<RuntimeUiChannel, RuntimeUiCh
     channel: "lead",
     label: "决策主脑",
   },
-  dream: {
-    channel: "dream",
-    label: "做梦",
-  },
-  workflow: {
-    channel: "workflow",
-    label: "工作流",
-  },
-  subagent: {
-    channel: "subagent",
-    label: "子代理",
-  },
-  team: {
-    channel: "team",
-    label: "队友",
-  },
-  background: {
-    channel: "background",
-    label: "后台",
-  },
   system: {
     channel: "system",
     label: "系统",

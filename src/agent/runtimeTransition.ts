@@ -9,7 +9,6 @@ export {
 export { normalizeRuntimeTransition } from "./runtimeTransition/normalize.js";
 
 export {
-  createExecutionDispatchYieldTransition,
   createEmptyAssistantResponseTransition,
   buildRunTurnResult,
   createFinalizeTransition,

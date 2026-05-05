@@ -1,4 +1,4 @@
-﻿import { buildCheckpointFlow } from "../runtimeTransition.js";
+import { buildCheckpointFlow } from "../runtimeTransition.js";
 import type {
   RuntimeFinalizeTransition,
   RuntimeRecoverTransition,
@@ -116,7 +116,6 @@ export function noteCheckpointCompleted(
       status: "completed",
       completedSteps:
         checkpoint.completedSteps.length > 0 ? checkpoint.completedSteps : deriveCompletedSteps(session),
-      evidenceArtifacts: [],
       flow: buildCheckpointFlow({
         current: checkpoint.flow,
         status: "completed",

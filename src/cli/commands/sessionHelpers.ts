@@ -20,7 +20,7 @@ export async function startInteractive(
     return;
   }
 
-  const { startInteractiveChat } = await import("../../ui/interactive.js");
+  const { startInteractiveChat } = await import("../../shell/cli/interactive.js");
   await startInteractiveChat(options);
 }
 

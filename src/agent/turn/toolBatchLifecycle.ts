@@ -1,7 +1,6 @@
-import { noteSessionDiff } from "../session/sessionDiff.js";
-import { createMessage } from "../session/messages.js";
+﻿import { noteSessionDiff } from "../session/sessionDiff.js";
+import { createMessage, createToolMessage } from "../session/messages.js";
 import { projectToolResultForModel } from "../toolResults/modelProjection.js";
-import { createStoredToolMessage } from "../toolResults/storage.js";
 import { noteRuntimeToolExecution } from "../runtimeMetrics.js";
 import { persistToolBatchCheckpoint } from "./persistence.js";
 import { executeToolBatch } from "./toolBatch.js";
@@ -9,13 +8,12 @@ import { getLightweightVerificationAttempt, readVerificationProgress } from "../
 import { recordVerificationAttempt, recordVerificationObservedPaths } from "../verification/state.js";
 import { recordObservabilityEvent } from "../../observability/writer.js";
 import { throwIfAborted } from "../../utils/abort.js";
-import type { ChangeStore } from "../../changes/store.js";
+import type { ChangeStore } from "../changes/store.js";
 import type { ProjectContext, SessionRecord, StoredMessage, ToolExecutionResult } from "../../types.js";
-import type { ToolRegistry } from "../../capabilities/tools/core/types.js";
+import type { ToolRegistry } from "../tools/core/types.js";
 import type { AgentIdentity, AssistantResponse, RunTurnOptions } from "../types.js";
 import type { ToolLoopGuard } from "./loopGuard.js";
 import { readToolFailureError } from "./toolFailure.js";
-import { traceToolCall, traceToolResult, type TraceRuntimeScope } from "../../trace/runtime.js";
 
 export interface ProcessToolCallBatchInput {
   session: SessionRecord;
@@ -29,8 +27,6 @@ export interface ProcessToolCallBatchInput {
   changedPaths: Set<string>;
   validationAttempted: boolean;
   validationPassed: boolean;
-  roundsSinceTodoWrite: number;
-  traceScope?: TraceRuntimeScope;
 }
 
 export interface ProcessToolCallBatchResult {
@@ -38,8 +34,6 @@ export interface ProcessToolCallBatchResult {
   changedPaths: Set<string>;
   validationAttempted: boolean;
   validationPassed: boolean;
-  roundsSinceTodoWrite: number;
-  leadShouldYieldForDelegatedWork: boolean;
 }
 
 export async function processToolCallBatch(input: ProcessToolCallBatchInput): Promise<ProcessToolCallBatchResult> {
@@ -47,8 +41,6 @@ export async function processToolCallBatch(input: ProcessToolCallBatchInput): Pr
   let changedPaths = new Set(input.changedPaths);
   let validationAttempted = input.validationAttempted;
   let validationPassed = input.validationPassed;
-  let roundsSinceTodoWrite = input.roundsSinceTodoWrite;
-  let leadShouldYieldForDelegatedWork = false;
   const { response, options, identity, toolRegistry, projectContext, changeStore, loopGuard } = input;
 
   if (response.content && !response.streamedAssistantContent) {
@@ -63,15 +55,10 @@ export async function processToolCallBatch(input: ProcessToolCallBatchInput): Pr
 
   const batchToolMessages: StoredMessage[] = [];
   const batchChangedPaths = new Set<string>();
-  let usedTodoWrite = false;
   const preflightBlocked = new Map<string, ToolExecutionResult>();
   for (const toolCall of response.toolCalls) {
     throwIfAborted(options.abortSignal, "Turn aborted by user.");
     options.callbacks?.onToolCall?.(toolCall.function.name, toolCall.function.arguments);
-    if (input.traceScope) {
-      await traceToolCall(input.traceScope, toolCall);
-    }
-    usedTodoWrite = usedTodoWrite || toolCall.function.name === "todo_write";
     const blockedResult = loopGuard.getPreflightBlockedResult(toolCall);
     const gatedResult = blockedResult ?? undefined;
     if (gatedResult) {
@@ -102,9 +89,6 @@ export async function processToolCallBatch(input: ProcessToolCallBatchInput): Pr
     let result = item.result;
     throwIfAborted(options.abortSignal, "Turn aborted by user.");
     let metadata = "metadata" in result ? result.metadata : undefined;
-    if (result.ok && metadata?.collaboration?.yieldLeadUntilCloseout) {
-      leadShouldYieldForDelegatedWork = true;
-    }
     if (metadata?.changedPaths?.length) {
       changedPaths = new Set([...changedPaths, ...metadata.changedPaths]);
       metadata.changedPaths.forEach((changedPath) => batchChangedPaths.add(changedPath));
@@ -164,29 +148,13 @@ export async function processToolCallBatch(input: ProcessToolCallBatchInput): Pr
       toolName: toolCall.function.name,
       result,
     });
-    const storedToolMessage = await createStoredToolMessage({
-      toolCallId: toolCall.id,
-      toolName: toolCall.function.name,
-      rawOutput: result.output,
-      modelOutput,
-      sessionId: session.id,
-      projectContext,
-    });
-    if (input.traceScope) {
-      await traceToolResult(input.traceScope, {
-        toolCall,
-        result,
-        durationMs,
-        externalizedToolResult: storedToolMessage.externalizedToolResult,
-      });
-    }
+    const storedToolMessage = createToolMessage(toolCall.id, modelOutput, toolCall.function.name);
     batchToolMessages.push(storedToolMessage);
     session = await options.sessionStore.appendMessages(
       noteRuntimeToolExecution(session, {
         toolName: toolCall.function.name,
         durationMs,
         ok: result.ok,
-        externalizedToolResult: storedToolMessage.externalizedToolResult,
       }),
       [storedToolMessage],
     );
@@ -199,14 +167,10 @@ export async function processToolCallBatch(input: ProcessToolCallBatchInput): Pr
     toolMessages: batchToolMessages,
     changedPaths: [...batchChangedPaths],
   });
-  roundsSinceTodoWrite = usedTodoWrite ? 0 : roundsSinceTodoWrite + 1;
-
   return {
     session,
     changedPaths,
     validationAttempted,
     validationPassed,
-    roundsSinceTodoWrite,
-    leadShouldYieldForDelegatedWork,
   };
 }

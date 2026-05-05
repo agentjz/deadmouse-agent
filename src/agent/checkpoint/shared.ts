@@ -3,16 +3,12 @@ import path from "node:path";
 
 import type {
   SessionCheckpoint,
-  SessionCheckpointArtifact,
   SessionCheckpointToolBatch,
 } from "../../types.js";
 
 export const MAX_COMPLETED_STEPS = 8;
-export const MAX_ARTIFACTS = 6;
 export const MAX_BATCH_TOOLS = 6;
 export const MAX_BATCH_PATHS = 6;
-export const MAX_LABEL_CHARS = 160;
-export const MAX_PREVIEW_CHARS = 240;
 export const MAX_SUMMARY_CHARS = 220;
 
 export function fingerprintObjective(objective: string): string {
@@ -94,37 +90,6 @@ export function formatList(values: string[]): string {
   return values.length > 0 ? values.join(" | ") : "none";
 }
 
-export function normalizeArtifacts(artifacts: SessionCheckpointArtifact[]): SessionCheckpointArtifact[] {
-  const result: SessionCheckpointArtifact[] = [];
-  const seen = new Set<string>();
-
-  for (const artifact of artifacts) {
-    const normalized = normalizeArtifact(artifact);
-    if (!normalized) {
-      continue;
-    }
-
-    const key = [
-      normalized.kind,
-      normalized.toolName ?? "",
-      normalized.storagePath ?? "",
-      normalized.path ?? "",
-      normalized.label,
-    ].join("|");
-    if (seen.has(key)) {
-      continue;
-    }
-
-    seen.add(key);
-    result.push(normalized);
-    if (result.length >= MAX_ARTIFACTS) {
-      break;
-    }
-  }
-
-  return result;
-}
-
 export function normalizeToolBatch(
   toolBatch: SessionCheckpointToolBatch | undefined,
 ): SessionCheckpointToolBatch | undefined {
@@ -141,39 +106,7 @@ export function normalizeToolBatch(
     tools,
     summary: truncate(normalizeText(toolBatch.summary) || `Ran ${tools.join(", ")}`, MAX_SUMMARY_CHARS)!,
     changedPaths: takeLastUnique(toolBatch.changedPaths ?? [], MAX_BATCH_PATHS),
-    artifacts: normalizeArtifacts(toolBatch.artifacts ?? []),
     recordedAt: normalizeTimestamp(toolBatch.recordedAt, new Date().toISOString()),
-  };
-}
-
-export function mergeArtifacts(...groups: SessionCheckpointArtifact[][]): SessionCheckpointArtifact[] {
-  return normalizeArtifacts(groups.flat());
-}
-
-function normalizeArtifact(artifact: SessionCheckpointArtifact | undefined): SessionCheckpointArtifact | null {
-  if (!artifact) {
-    return null;
-  }
-
-  const kind = artifact.kind;
-  if (kind !== "externalized_tool_result" && kind !== "tool_preview" && kind !== "pending_path") {
-    return null;
-  }
-
-  const label = normalizeText(artifact.label) || normalizeText(artifact.path) || normalizeText(artifact.storagePath);
-  if (!label) {
-    return null;
-  }
-
-  return {
-    kind,
-    label: truncate(label, MAX_LABEL_CHARS)!,
-    toolName: normalizeText(artifact.toolName) || undefined,
-    path: normalizeText(artifact.path) || undefined,
-    storagePath: normalizeText(artifact.storagePath) || undefined,
-    preview: truncate(normalizeText(artifact.preview), MAX_PREVIEW_CHARS) || undefined,
-    summary: truncate(normalizeText(artifact.summary), MAX_SUMMARY_CHARS) || undefined,
-    sha256: normalizeText(artifact.sha256) || undefined,
   };
 }
 

@@ -1,7 +1,6 @@
-import type { ChangeStore } from "../../changes/store.js";
-import { buildObjectiveFrame } from "../../objective/metadata.js";
-import { createToolRegistry } from "../../capabilities/tools/index.js";
-import type { PreparedToolRegistryCall, ToolRegistry } from "../../capabilities/tools/core/types.js";
+﻿import type { ChangeStore } from "../changes/store.js";
+import { createToolRegistry } from "../tools/index.js";
+import type { PreparedToolRegistryCall, ToolRegistry } from "../tools/core/types.js";
 import type {
   ProjectContext,
   SessionRecord,
@@ -316,9 +315,6 @@ function buildToolContext(
     callbacks: options.callbacks,
     abortSignal: options.abortSignal,
     projectContext,
-    currentObjective: session.taskState?.objective
-      ? buildObjectiveFrame(session.taskState.objective)
-      : undefined,
     changeStore,
     createToolRegistry,
   };

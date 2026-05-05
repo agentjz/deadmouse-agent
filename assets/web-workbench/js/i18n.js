@@ -44,11 +44,6 @@ export const zhCN = {
   tool: "工具",
   result: "结果",
   toolError: "工具错误",
-  teammate: "队友",
-  subagent: "子代理",
-  dreaming: "做梦",
-  background: "后台",
-  workflow: "工作流",
   system: "系统",
   foreground: "前台",
   dispatch: "派发",
@@ -68,8 +63,6 @@ export const zhCN = {
   connecting: "连接中",
   modified: "已修改",
   truncated: "已截断",
-  noActiveSpec: "未绑定 Spec",
-  todoTitle: "任务",
 };
 
 export function t(key) {

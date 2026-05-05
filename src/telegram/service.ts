@@ -21,7 +21,7 @@ import { classifyTelegramUpdate } from "./updateFilter.js";
 import { TelegramDeliveryQueue } from "./deliveryQueue.js";
 import { TelegramUpdateCommitQueue } from "./updateCommitQueue.js";
 import type { TelegramPrivateMessage, TelegramUpdate } from "./types.js";
-import { TelegramObservabilityWriter, resolveHostStateRoot } from "./service/observability.js";
+import { QueuedHostMessageRecorder, resolveHostStateRoot } from "../observability/hostEvents.js";
 import { TelegramTurnState } from "./service/turnState.js";
 import { describeIgnoredTelegramUpdate, isStopCommand } from "./service/updateClassification.js";
 
@@ -48,7 +48,7 @@ export class TelegramService {
   private readonly commandQueue: PerPeerCommandQueue;
   private readonly attachmentStore: TelegramAttachmentStoreLike;
   private readonly logger: TelegramLogger;
-  private readonly observability: TelegramObservabilityWriter;
+  private readonly observability: QueuedHostMessageRecorder;
   private readonly turnState = new TelegramTurnState();
   private readonly inFlightTasks = new Set<Promise<void>>();
   private readonly pendingUpdateCommitQueue = new TelegramUpdateCommitQueue();
@@ -63,12 +63,13 @@ export class TelegramService {
       options.attachmentStore ??
       new FileTelegramAttachmentStore(path.join(options.config.telegram.stateDir, "attachments.json"));
     this.logger = options.logger ?? createConsoleTelegramLogger();
-    this.observability = new TelegramObservabilityWriter(
+    this.observability = new QueuedHostMessageRecorder(
       resolveHostStateRoot(options.config.telegram.stateDir, options.cwd),
+      "telegram",
     );
     options.deliveryQueue.subscribe?.({
       onDeliveryFailed: (entry, error) => {
-        this.observability.queueHostMessage("failed", {
+        this.observability.queue("failed", {
           direction: "outbound",
           deliveryKind: entry.kind === "file" ? "file" : "text",
           chatId: entry.chatId,
@@ -190,7 +191,7 @@ export class TelegramService {
       inputKind: classified.kind === "private_file_message" ? "file" : "text",
       fileName: classified.kind === "private_file_message" ? classified.fileName : undefined,
     });
-    this.observability.queueHostMessage("accepted", {
+    this.observability.queue("accepted", {
       direction: "inbound",
       peerKey: classified.peerKey,
       userId: classified.userId,
@@ -274,7 +275,7 @@ export class TelegramService {
         chatId,
         text: chunk,
       });
-      this.observability.queueHostMessage("queued", {
+      this.observability.queue("queued", {
         direction: "outbound",
         deliveryKind: "text",
         chatId,

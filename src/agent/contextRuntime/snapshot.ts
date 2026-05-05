@@ -11,7 +11,6 @@ export function buildContextRuntimeSnapshot(
     }),
     workingMemory: buildAgentWorkingMemory({
       taskState: input.session.taskState,
-      todoItems: input.session.todoItems,
       checkpoint: input.session.checkpoint,
       verificationState: input.session.verificationState,
       acceptanceState: input.session.acceptanceState,

@@ -2,13 +2,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import type { ChangeRecord, RuntimeConfig, SessionRecord } from "../types.js";
-import { BackgroundJobStore } from "../execution/background.js";
 import { resolveProjectRoots } from "../context/repoRoots.js";
-import { TeamStore } from "../capabilities/team/store.js";
-import { terminateKnownProcesses } from "../utils/processControl.js";
 import { getProjectStatePaths } from "./statePaths.js";
 import { isSameOrDescendant, waitForRemovedPaths } from "./resetSupport.js";
-import { WorktreeStore } from "../worktrees/store.js";
 
 const PRESERVED_KITTY_ENTRIES = new Set([".env", ".env.example"]);
 
@@ -23,10 +19,8 @@ export interface ResetProjectRuntimeResult {
   stateRootDir: string;
   removedSessionIds: string[];
   removedChangeIds: string[];
-  removedWorktrees: string[];
   removedStateEntries: string[];
   preservedStateEntries: string[];
-  terminatedPids: number[];
 }
 
 export async function resetProjectRuntime(input: ResetProjectRuntimeInput): Promise<ResetProjectRuntimeResult> {
@@ -34,18 +28,6 @@ export async function resetProjectRuntime(input: ResetProjectRuntimeInput): Prom
   const statePaths = getProjectStatePaths(roots.stateRootDir);
   const kittyDir = statePaths.kittyDir;
 
-  const [worktrees, teamMembers, backgroundJobs] = await Promise.all([
-    readTrackedWorktrees(roots.stateRootDir),
-    new TeamStore(roots.stateRootDir).listMembers().catch(() => []),
-    new BackgroundJobStore(roots.stateRootDir).list().catch(() => []),
-  ]);
-
-  const terminatedPids = await terminateKnownProcesses([
-    ...teamMembers.map((member) => member.pid),
-    ...backgroundJobs.map((job) => job.pid),
-  ]);
-
-  const removedWorktrees = await removeTrackedWorktrees(roots.stateRootDir, worktrees);
   const removedSessionIds = await removeProjectSessions({
     sessionsDir: input.config.paths.sessionsDir,
     stateRootDir: roots.stateRootDir,
@@ -65,46 +47,9 @@ export async function resetProjectRuntime(input: ResetProjectRuntimeInput): Prom
     stateRootDir: roots.stateRootDir,
     removedSessionIds,
     removedChangeIds,
-    removedWorktrees,
     removedStateEntries: removedEntries,
     preservedStateEntries: preservedEntries,
-    terminatedPids,
   };
-}
-
-async function readTrackedWorktrees(rootDir: string): Promise<Array<{ name: string; path: string; status?: string }>> {
-  const records = await new WorktreeStore(rootDir).list().catch(() => []);
-  return records.map((record) => ({
-    name: record.name,
-    path: record.path,
-    status: record.status,
-  }));
-}
-
-async function removeTrackedWorktrees(
-  rootDir: string,
-  worktrees: Array<{ name: string; path: string; status?: string }>,
-): Promise<string[]> {
-  const removed: string[] = [];
-  const store = new WorktreeStore(rootDir);
-
-  for (const worktree of worktrees) {
-    if (!worktree.name || !worktree.path || worktree.status === "removed") {
-      continue;
-    }
-
-    try {
-      await store.remove(worktree.name, {
-        force: true,
-      });
-    } catch {
-      await fs.rm(worktree.path, { recursive: true, force: true }).catch(() => null);
-    }
-
-    removed.push(worktree.name);
-  }
-
-  return removed;
 }
 
 async function removeProjectSessions(input: {
@@ -217,4 +162,3 @@ async function clearProjectKittyDirectory(kittyDir: string): Promise<{
     preservedEntries,
   };
 }
-

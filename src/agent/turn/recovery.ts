@@ -1,5 +1,4 @@
 import { expandStartToToolBoundary } from "../session/messages.js";
-import { compactToolPayloadForTransport } from "../toolResults/preview.js";
 import type { ProviderMessage } from "../provider/contract.js";
 import { isAbortError, sleepWithSignal } from "../../utils/abort.js";
 
@@ -127,7 +126,7 @@ export function shrinkMessagesForContextLimit(
     if (message.role === "tool" && typeof message.content === "string") {
       return {
         ...message,
-        content: compactToolPayloadForTransport(message.content, detailed ? 800 : 260),
+        content: compactText(message.content, detailed ? 800 : 260),
       };
     }
 

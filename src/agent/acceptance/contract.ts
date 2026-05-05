@@ -3,7 +3,6 @@ import type {
   AcceptanceCommandRequirement,
   AcceptanceContract,
   AcceptanceFileRequirement,
-  AcceptanceHttpRequirement,
   AcceptanceState,
   StoredMessage,
 } from "../../types.js";
@@ -82,15 +81,11 @@ function findAcceptanceContract(messages: StoredMessage[]): AcceptanceContract |
 function normalizeAcceptanceContract(contract: Record<string, unknown> | AcceptanceContract): AcceptanceContract {
   const rawRequiredFiles = "requiredFiles" in contract ? contract.requiredFiles : (contract as Record<string, unknown>)["required_files"];
   const rawCommandChecks = "commandChecks" in contract ? contract.commandChecks : (contract as Record<string, unknown>)["command_checks"];
-  const rawHttpChecks = "httpChecks" in contract ? contract.httpChecks : (contract as Record<string, unknown>)["http_checks"];
   const requiredFiles = Array.isArray(rawRequiredFiles)
     ? rawRequiredFiles
     : [];
   const commandChecks = Array.isArray(rawCommandChecks)
     ? rawCommandChecks
-    : [];
-  const httpChecks = Array.isArray(rawHttpChecks)
-    ? rawHttpChecks
     : [];
 
   return {
@@ -102,9 +97,6 @@ function normalizeAcceptanceContract(contract: Record<string, unknown> | Accepta
     commandChecks: commandChecks
       .map((item: unknown) => normalizeCommandRequirement(item))
       .filter((item): item is AcceptanceCommandRequirement => Boolean(item)),
-    httpChecks: httpChecks
-      .map((item: unknown) => normalizeHttpRequirement(item))
-      .filter((item): item is AcceptanceHttpRequirement => Boolean(item)),
   };
 }
 
@@ -170,34 +162,6 @@ function normalizeCommandRequirement(value: unknown): AcceptanceCommandRequireme
   return {
     id,
     commandContains,
-  };
-}
-
-function normalizeHttpRequirement(value: unknown): AcceptanceHttpRequirement | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-
-  const record = value as Record<string, unknown>;
-  const id = normalizeText(record.id);
-  const url = normalizeText(record.url);
-  if (!id || !url) {
-    return null;
-  }
-
-  const rawBodyContains = record.bodyContains ?? record.body_contains;
-  const bodyContains = Array.isArray(rawBodyContains)
-    ? takeLastUnique(
-        rawBodyContains.map((item: unknown) => normalizeText(item)).filter(Boolean),
-        32,
-      )
-    : [];
-
-  return {
-    id,
-    url,
-    status: clampWholeNumber(record.status, 100, 599, undefined),
-    bodyContains,
   };
 }
 

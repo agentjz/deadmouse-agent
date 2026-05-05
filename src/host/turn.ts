@@ -2,9 +2,9 @@ import { AgentTurnError, getErrorMessage } from "../agent/errors.js";
 import { runManagedAgentTurn } from "../agent/turn.js";
 import { resolveProjectRoots } from "../context/repoRoots.js";
 import { enterCrashContext } from "../observability/crashRecorder.js";
-import { recordObservabilityEvent } from "../observability/writer.js";
+import { recordHostTurnFinished, recordHostTurnStarted } from "../observability/hostEvents.js";
 import { isAbortError } from "../utils/abort.js";
-import { createHostToolRegistry } from "./toolRegistry.js";
+import { createDefaultAgentToolRegistry } from "../agent/tools/registry.js";
 import type { HostTurnDependencies, HostTurnOptions, HostTurnOutcome } from "./types.js";
 
 const DEFAULT_IDENTITY = {
@@ -23,25 +23,21 @@ export async function runHostTurn(
     host,
     sessionId: options.session.id,
   });
-  const createToolRegistry = dependencies.createToolRegistry ?? createHostToolRegistry;
+  const createToolRegistry = dependencies.createToolRegistry ?? createDefaultAgentToolRegistry;
   const runTurn = dependencies.runTurn ?? runManagedAgentTurn;
   let toolRegistry: Awaited<ReturnType<typeof createToolRegistry>> | null = null;
 
-  await recordObservabilityEvent(stateRootDir, {
-    event: "host.turn",
-    status: "started",
+  await recordHostTurnStarted(stateRootDir, {
     host,
     sessionId: options.session.id,
     identityKind: (options.identity ?? DEFAULT_IDENTITY).kind,
     identityName: (options.identity ?? DEFAULT_IDENTITY).name,
-    details: {
-      cwd: options.cwd,
-    },
+    cwd: options.cwd,
   });
 
   try {
     if (options.abortSignal?.aborted) {
-      await recordHostTurnResult(stateRootDir, {
+      await recordHostTurnFinished(stateRootDir, {
         host,
         sessionId: options.session.id,
         identityKind: (options.identity ?? DEFAULT_IDENTITY).kind,
@@ -57,13 +53,10 @@ export async function runHostTurn(
       };
     }
 
-    toolRegistry = await createToolRegistry(options.config, {
-      mode: options.mode ?? options.runtimePromptState?.mode ?? "agent",
-      extraTools: options.extraTools,
-    });
+    toolRegistry = await createToolRegistry(options.config);
 
     if (options.abortSignal?.aborted) {
-      await recordHostTurnResult(stateRootDir, {
+      await recordHostTurnFinished(stateRootDir, {
         host,
         sessionId: options.session.id,
         identityKind: (options.identity ?? DEFAULT_IDENTITY).kind,
@@ -90,14 +83,13 @@ export async function runHostTurn(
       toolRegistry,
       identity: options.identity ?? DEFAULT_IDENTITY,
       runtimePromptState: {
-        mode: options.mode ?? options.runtimePromptState?.mode ?? "agent",
         ...(options.runtimePromptState ?? {}),
       },
     });
     dependencies.onRunTurnStarted?.();
     const result = await resultPromise;
     const status = result.paused ? "paused" : "completed";
-    await recordHostTurnResult(stateRootDir, {
+    await recordHostTurnFinished(stateRootDir, {
       host,
       sessionId: result.session.id,
       identityKind: (options.identity ?? DEFAULT_IDENTITY).kind,
@@ -121,7 +113,7 @@ export async function runHostTurn(
   } catch (error) {
     const session = error instanceof AgentTurnError ? error.session : options.session;
     if (isAbortError(error)) {
-      await recordHostTurnResult(stateRootDir, {
+      await recordHostTurnFinished(stateRootDir, {
         host,
         sessionId: session.id,
         identityKind: (options.identity ?? DEFAULT_IDENTITY).kind,
@@ -139,7 +131,7 @@ export async function runHostTurn(
       };
     }
 
-    await recordHostTurnResult(stateRootDir, {
+    await recordHostTurnFinished(stateRootDir, {
       host,
       sessionId: session.id,
       identityKind: (options.identity ?? DEFAULT_IDENTITY).kind,
@@ -159,36 +151,6 @@ export async function runHostTurn(
     releaseCrashContext();
     await toolRegistry?.close?.().catch(() => undefined);
   }
-}
-
-async function recordHostTurnResult(
-  rootDir: string,
-  input: {
-    host: string;
-    sessionId: string;
-    identityKind: string;
-    identityName: string;
-    status: "completed" | "paused" | "aborted" | "failed";
-    durationMs: number;
-    cwd: string;
-    error?: unknown;
-    details?: Record<string, unknown>;
-  },
-): Promise<void> {
-  await recordObservabilityEvent(rootDir, {
-    event: "host.turn",
-    status: input.status,
-    host: input.host,
-    sessionId: input.sessionId,
-    identityKind: input.identityKind,
-    identityName: input.identityName,
-    durationMs: input.durationMs,
-    error: input.error,
-    details: {
-      cwd: input.cwd,
-      ...(input.details ?? {}),
-    },
-  });
 }
 
 async function readStateRootDir(cwd: string): Promise<string> {

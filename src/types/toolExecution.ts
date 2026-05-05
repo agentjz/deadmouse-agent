@@ -26,51 +26,11 @@ export interface ToolExecutionProtocolMetadata {
   };
 }
 
-export type ToolExecutionProcessLane = "foreground" | "background";
-
-export type ToolExecutionProcessState = "running" | "exited" | "closed";
-
-export type ToolExecutionProcessEvent =
-  | "process/start"
-  | "process/read"
-  | "process/write"
-  | "process/terminate"
-  | "process/output"
-  | "process/exited"
-  | "process/closed";
-
-export interface ToolExecutionProcessMetadata {
-  protocol: "kitty.exec";
-  processId: string;
-  lane: ToolExecutionProcessLane;
-  state: ToolExecutionProcessState;
-  events: ToolExecutionProcessEvent[];
-  capabilities: {
-    read: boolean;
-    write: boolean;
-    terminate: boolean;
-  };
-  exitCode?: number | null;
-  statusDetail?: string;
-}
-
-export interface ToolExecutionCollaborationMetadata {
-  action: "spawn" | "send_message" | "read_inbox" | "close_execution";
-  actor?: string;
-  from?: string;
-  to?: string;
-  executionId?: string;
-  taskId?: number;
-  yieldLeadUntilCloseout?: boolean;
-}
-
 export interface ToolExecutionMetadata {
   changedPaths?: string[];
   changeId?: string;
   verification?: VerificationAttempt;
   protocol?: ToolExecutionProtocolMetadata;
-  process?: ToolExecutionProcessMetadata;
-  collaboration?: ToolExecutionCollaborationMetadata;
   runtime?: {
     status: "completed" | "failed" | "timed_out" | "stalled" | "aborted";
     exitCode: number | null;

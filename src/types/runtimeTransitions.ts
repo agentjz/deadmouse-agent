@@ -39,10 +39,6 @@ export interface RuntimeYieldToolStepLimitReason {
   limit?: number;
 }
 
-export interface RuntimeYieldExecutionDispatchReason {
-  code: "yield.execution_dispatch";
-}
-
 export interface RuntimePauseProviderRecoveryBudgetExhaustedReason {
   code: "pause.provider_recovery_budget_exhausted";
   pauseReason: string;
@@ -86,7 +82,7 @@ export type RuntimeRecoverReason =
   | RuntimeRecoverProviderRequestReason
   | RuntimeRecoverPostCompactionDegradationReason;
 
-export type RuntimeYieldReason = RuntimeYieldToolStepLimitReason | RuntimeYieldExecutionDispatchReason;
+export type RuntimeYieldReason = RuntimeYieldToolStepLimitReason;
 
 export type RuntimePauseReason =
   | RuntimePauseProviderRecoveryBudgetExhaustedReason

@@ -1,6 +1,5 @@
 import { isInternalMessage } from "../session/turnFrame.js";
 import type {
-  ExternalizedToolResultReference,
   SessionRecord,
   SessionRuntimeStats,
   SessionRuntimeToolStats,
@@ -22,7 +21,6 @@ export interface ToolExecutionMetric {
   toolName: string;
   durationMs: number;
   ok: boolean;
-  externalizedToolResult?: ExternalizedToolResultReference;
 }
 
 export function createEmptyRuntimeStats(timestamp = new Date().toISOString()): SessionRuntimeStats {
@@ -50,10 +48,6 @@ export function createEmptyRuntimeStats(timestamp = new Date().toISOString()): S
       yieldCount: 0,
       recoveryCount: 0,
       compressionCount: 0,
-    },
-    externalizedToolResults: {
-      count: 0,
-      byteLengthTotal: 0,
     },
     updatedAt: timestamp,
   };
@@ -90,10 +84,6 @@ export function normalizeRuntimeStats(
       yieldCount: normalizeNumber(runtimeStats?.events?.yieldCount),
       recoveryCount: normalizeNumber(runtimeStats?.events?.recoveryCount),
       compressionCount: normalizeNumber(runtimeStats?.events?.compressionCount),
-    },
-    externalizedToolResults: {
-      count: normalizeNumber(runtimeStats?.externalizedToolResults?.count),
-      byteLengthTotal: normalizeNumber(runtimeStats?.externalizedToolResults?.byteLengthTotal),
     },
     updatedAt: normalizeTimestamp(runtimeStats?.updatedAt, base.updatedAt),
   };
@@ -181,11 +171,6 @@ export function noteRuntimeToolExecution(
     toolStats.errorCount += 1;
   }
   runtimeStats.tools.byName[toolName] = toolStats;
-
-  if (metric.externalizedToolResult) {
-    runtimeStats.externalizedToolResults.count += 1;
-    runtimeStats.externalizedToolResults.byteLengthTotal += normalizeNumber(metric.externalizedToolResult.byteLength);
-  }
 
   runtimeStats.updatedAt = timestamp;
   return withRuntimeStats(session, runtimeStats);

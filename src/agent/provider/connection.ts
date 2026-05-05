@@ -1,4 +1,4 @@
-import { resolveProviderCapabilities } from "../provider.js";
+import { resolveProviderCapabilities } from "./capabilities.js";
 
 export interface ProviderConnectionProbeInput {
   provider?: string;

@@ -1,9 +1,7 @@
-import type { ChangeStore } from "../../changes/store.js";
-import { ToolExecutionError } from "../../capabilities/tools/core/errors.js";
-import { readToolExecutionProtocol } from "../../capabilities/tools/core/toolFinalize.js";
-import { buildToolCapabilityHint, getToolCapabilityHintForPath, getToolCapabilityHintForText } from "../../capabilities/tools/core/capabilityHints.js";
-import { createToolRegistry } from "../../capabilities/tools/index.js";
-import { buildObjectiveFrame } from "../../objective/metadata.js";
+﻿import type { ChangeStore } from "../changes/store.js";
+import { ToolExecutionError } from "../tools/core/errors.js";
+import { readToolExecutionProtocol } from "../tools/core/toolFinalize.js";
+import { createToolRegistry } from "../tools/index.js";
 import type { ProjectContext, SessionRecord, ToolCallRecord, ToolExecutionResult } from "../../types.js";
 import type { RunTurnOptions } from "../types.js";
 import { isAbortError } from "../../utils/abort.js";
@@ -28,9 +26,6 @@ export async function executeToolCallWithRecovery(
       callbacks: options.callbacks,
       abortSignal: options.abortSignal,
       projectContext,
-      currentObjective: session.taskState?.objective
-        ? buildObjectiveFrame(session.taskState.objective)
-        : undefined,
       changeStore,
       createToolRegistry,
     });
@@ -92,11 +87,6 @@ export async function executePreparedToolCallWithRecovery(
 
 function buildToolRecoveryHint(toolName: string, rawArgs: string, message: string): string {
   const lower = message.toLowerCase();
-  const hint = readCapabilityHint(rawArgs, message);
-
-  if (hint) {
-    return buildToolCapabilityHint(hint);
-  }
 
   if (lower.includes("enoent") || lower.includes("no such file") || lower.includes("file not found")) {
     return `The path used by ${toolName} does not exist. Use bash to locate the path, then read the target area.`;
@@ -119,14 +109,4 @@ function buildToolRecoveryHint(toolName: string, rawArgs: string, message: strin
   }
 
   return `The ${toolName} tool failed. Use the error facts to choose the next tool call.`;
-}
-
-function readCapabilityHint(rawArgs: string, message: string) {
-  try {
-    const parsed = JSON.parse(rawArgs) as { path?: unknown };
-    const targetPath = typeof parsed.path === "string" ? parsed.path : "";
-    return getToolCapabilityHintForPath(targetPath) ?? getToolCapabilityHintForText(message);
-  } catch {
-    return getToolCapabilityHintForText(message);
-  }
 }

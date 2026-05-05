@@ -9,9 +9,7 @@ import type {
   RuntimeConfig,
   SessionCheckpoint,
   SessionRecord,
-  SkillRuntimeState,
   TaskState,
-  TodoItem,
   VerificationState,
 } from "../../types.js";
 
@@ -36,7 +34,7 @@ export interface ContextRuntimeSnapshot {
 export interface BuildContextRuntimeSnapshotInput {
   session: Pick<
     SessionRecord,
-    "messages" | "taskState" | "todoItems" | "checkpoint" | "verificationState" | "acceptanceState"
+    "messages" | "taskState" | "checkpoint" | "verificationState" | "acceptanceState"
   >;
   toolProgress?: ContextRuntimeToolProgress;
 }
@@ -46,10 +44,8 @@ export interface BuildContextRuntimePromptLayersInput {
   config: RuntimeConfig;
   projectContext: ProjectContext;
   taskState?: TaskState;
-  todoItems?: TodoItem[];
   verificationState?: VerificationState;
   runtimeState?: PromptRuntimeState;
-  skillRuntimeState?: SkillRuntimeState;
   checkpoint?: SessionCheckpoint;
   acceptanceState?: AcceptanceState;
   messages?: SessionRecord["messages"];

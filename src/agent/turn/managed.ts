@@ -1,10 +1,8 @@
 import { buildInternalWakeInput } from "../checkpoint.js";
-import { runAgentTurn } from "../runTurn.js";
+import { runAgentTurn } from "./run.js";
 import { createManagedSliceBudgetPauseTransition } from "../runtimeTransition.js";
-import { hasActiveLeadWaitExecutions, waitForLeadWaitExecutionsToSettle } from "../../execution/leadWait.js";
 import { persistCheckpointTransition } from "./persistence.js";
 import { evaluateManagedSliceBudget, resolveManagedSliceBudget } from "./managedBudget.js";
-import { hasUnfinishedLeadWork } from "./leadReturnGate.js";
 import type { AgentIdentity, RunTurnOptions, RunTurnResult } from "../types.js";
 
 export interface ManagedTurnYieldContext {
@@ -68,52 +66,10 @@ export async function runManagedAgentTurn(options: ManagedTurnOptions): Promise<
         };
       }
 
-      if (isLead && await hasActiveLeadWaitExecutions(options.cwd, session.taskState?.objective)) {
-        await waitForLeadWaitExecutionsToSettle({
-          cwd: options.cwd,
-          objectiveText: session.taskState?.objective,
-          abortSignal: options.abortSignal,
-          onForegroundStream: options.callbacks?.onExecutionForegroundStream,
-        });
-        continue;
-      }
-
-      if (isLead && await hasUnfinishedLeadWork(options.cwd, session.taskState?.objective)) {
-        managedWindowSlicesUsed += 1;
-        const budgetDecision = evaluateManagedSliceBudget({
-          budget: managedBudget,
-          slicesUsed: managedWindowSlicesUsed,
-          startedAtMs: managedWindowStartedAtMs,
-        });
-        if (budgetDecision.exhausted) {
-          options.callbacks?.onStatus?.(
-            `Lead return gate reached the runtime boundary (${budgetDecision.snapshot.slicesUsed}/${budgetDecision.snapshot.maxSlices}, ${budgetDecision.snapshot.elapsedMs}ms). Waking Lead.`,
-          );
-          managedWindowStartedAtMs = Date.now();
-          managedWindowSlicesUsed = 0;
-          leadHardBoundaryReviewInFlight = true;
-          nextInput = buildContinuationInput(options.identity);
-          continue;
-        }
-        nextInput = buildContinuationInput(options.identity);
-        continue;
-      }
-
       return {
         ...result,
         session,
       };
-    }
-
-    if (isLead && result.transition?.action === "yield" && result.transition.reason.code === "yield.execution_dispatch") {
-      await waitForLeadWaitExecutionsToSettle({
-        cwd: options.cwd,
-        objectiveText: session.taskState?.objective,
-        abortSignal: options.abortSignal,
-        onForegroundStream: options.callbacks?.onExecutionForegroundStream,
-      });
-      nextInput = buildInternalWakeInput(options.identity);
-      continue;
     }
 
     managedWindowSlicesUsed += 1;
@@ -171,10 +127,6 @@ export async function runManagedAgentTurn(options: ManagedTurnOptions): Promise<
 }
 
 function resolveYieldAfterToolSteps(options: ManagedTurnOptions): number | undefined {
-  if (options.identity?.kind === "subagent") {
-    return undefined;
-  }
-
   const configured =
     typeof options.yieldAfterToolSteps === "number"
       ? options.yieldAfterToolSteps

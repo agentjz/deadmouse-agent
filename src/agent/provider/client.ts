@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 
-import { resolveProviderCapabilities } from "../provider.js";
+import { resolveProviderCapabilities } from "./capabilities.js";
 import { buildProviderBaseUrlCandidates } from "./connection.js";
 import type { RuntimeConfig } from "../../types.js";
 

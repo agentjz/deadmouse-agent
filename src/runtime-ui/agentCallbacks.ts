@@ -1,6 +1,6 @@
 import type { AgentCallbacks } from "../agent/types.js";
 import type { RuntimeConfig } from "../types.js";
-import { createRuntimeUiEvent, normalizeRuntimeUiChannel, type RuntimeUiChannel } from "./events.js";
+import { createRuntimeUiEvent, type RuntimeUiChannel } from "./events.js";
 import { createRuntimeUiTerminalRenderer } from "./terminalRenderer.js";
 
 export function createRuntimeUiAgentCallbacks(input: {
@@ -59,16 +59,6 @@ export function createRuntimeUiAgentCallbacks(input: {
       onAssistantDone() {
         renderer.flush();
       },
-      onDispatch(event) {
-        const channel = normalizeRuntimeUiChannel(event.profile);
-        render(createRuntimeUiEvent({
-          channel,
-          kind: "dispatch",
-          actor: event.actorName,
-          executionId: event.executionId,
-          message: formatDispatchMessage(event),
-        }));
-      },
       onToolCall(name, args) {
         render(createRuntimeUiEvent({
           channel: input.channel,
@@ -99,19 +89,4 @@ export function createRuntimeUiAgentCallbacks(input: {
       },
     },
   };
-}
-
-function formatDispatchMessage(event: {
-  actorName: string;
-  taskId?: number;
-  pid?: number;
-  summary?: string;
-}): string {
-  return [
-    event.actorName,
-    "started",
-    typeof event.taskId === "number" ? `task=${event.taskId}` : undefined,
-    typeof event.pid === "number" ? `pid=${event.pid}` : undefined,
-    event.summary,
-  ].filter(Boolean).join(" ");
 }

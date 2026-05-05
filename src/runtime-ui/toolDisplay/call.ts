@@ -33,35 +33,10 @@ export function buildToolCallDisplay(
         summary: `${name} ${path ?? "(missing path)"}${range}`,
       };
     }
-    case "read_docx":
-    case "mineru_doc_read":
-    case "mineru_image_read":
-    case "mineru_pdf_read":
-    case "mineru_ppt_read":
-    case "read_spreadsheet":
-    case "download_url":
-    case "http_probe":
-      return {
-        summary: `${name} ${path ?? readStringField(args, "url") ?? "(missing path)"}`,
-      };
     case "write":
       return {
         summary: `${name} ${path ?? "(missing path)"}`,
       };
-    case "write_docx":
-      return {
-        summary: `${name} ${path ?? "(missing path)"}`,
-      };
-    case "edit_docx": {
-      const action = readStringField(args, "action");
-      const heading = readStringField(args, "heading");
-      return {
-        summary:
-          `${name} ${path ?? "(missing path)"}` +
-          (action ? ` action=${action}` : "") +
-          (heading ? ` heading=${heading}` : ""),
-      };
-    }
     case "edit": {
       const edits = Array.isArray(args.edits) ? args.edits : [];
       return {
@@ -77,125 +52,6 @@ export function buildToolCallDisplay(
         summary:
           `${name} ${command ?? ""}`.trim() +
           (runCwd ? ` cwd=${runCwd}` : ""),
-      };
-    }
-    case "background_run": {
-      const command = readStringField(args, "command");
-      const runCwd = readStringField(args, "cwd");
-      return {
-        summary:
-          `${name} ${command ?? ""}`.trim() +
-          (runCwd ? ` cwd=${runCwd}` : ""),
-      };
-    }
-    case "background_check": {
-      const jobId = readStringField(args, "job_id");
-      return {
-        summary: `${name} ${jobId ?? "recent"}`.trim(),
-      };
-    }
-    case "dreaming_start": {
-      const objective = readStringField(args, "objective");
-      return {
-        summary: `${name}${objective ? ` "${truncate(objective, maxChars)}"` : ""}`,
-      };
-    }
-    case "runtime_event_search": {
-      const executionId = readStringField(args, "execution_id");
-      const limit = typeof args.limit === "number" ? Math.trunc(args.limit) : undefined;
-      return {
-        summary: `${name}${executionId ? ` ${executionId}` : ""}${limit ? ` limit=${limit}` : ""}`.trim(),
-      };
-    }
-    case "session_final_output": {
-      const sessionId = readStringField(args, "session_id");
-      const limit = typeof args.limit === "number" ? Math.trunc(args.limit) : undefined;
-      return {
-        summary: `${name}${sessionId ? ` ${sessionId}` : ""}${limit ? ` limit=${limit}` : ""}`.trim(),
-      };
-    }
-    case "task": {
-      const agentType = readStringField(args, "agent_type");
-      const description = readStringField(args, "description");
-      return {
-        summary:
-          `${name} ${agentType ?? ""}`.trim() +
-          (description ? ` "${description}"` : ""),
-      };
-    }
-    case "worktree_create": {
-      const worktreeName = readStringField(args, "name");
-      const taskId = typeof args.task_id === "number" ? Math.trunc(args.task_id) : undefined;
-      return {
-        summary: `${name} ${worktreeName ?? ""}`.trim() + (taskId ? ` task=${taskId}` : ""),
-      };
-    }
-    case "worktree_get":
-    case "worktree_events":
-    case "worktree_keep":
-    case "worktree_remove": {
-      const worktreeName = readStringField(args, "name");
-      return {
-        summary: `${name} ${worktreeName ?? ""}`.trim(),
-      };
-    }
-    case "task_create": {
-      const subject = readStringField(args, "subject");
-      return {
-        summary: `${name} ${subject ?? ""}`.trim(),
-      };
-    }
-    case "task_update": {
-      const taskId = typeof args.task_id === "number" ? Math.trunc(args.task_id) : undefined;
-      const status = readStringField(args, "status");
-      return {
-        summary:
-          `${name} #${taskId ?? "?"}` +
-          (status ? ` status=${status}` : ""),
-      };
-    }
-    case "claim_task": {
-      const taskId = typeof args.task_id === "number" ? Math.trunc(args.task_id) : undefined;
-      return {
-        summary: `${name} #${taskId ?? "?"}`,
-      };
-    }
-    case "spawn_teammate": {
-      const teammate = readStringField(args, "name");
-      const role = readStringField(args, "role");
-      return {
-        summary: `${name} ${teammate ?? ""}`.trim() + (role ? ` role=${role}` : ""),
-      };
-    }
-    case "send_message": {
-      const recipient = readStringField(args, "to");
-      const msgType = readStringField(args, "msg_type");
-      return {
-        summary: `${name} ${recipient ?? ""}`.trim() + (msgType ? ` type=${msgType}` : ""),
-      };
-    }
-    case "task_list":
-    case "worktree_list":
-    case "list_teammates":
-    case "read_inbox":
-    case "broadcast":
-    case "idle":
-    case "plan_approval":
-    case "shutdown_request":
-    case "shutdown_response":
-      return {
-        summary: name,
-      };
-    case "todo_write": {
-      const items = Array.isArray(args.items) ? args.items : [];
-      return {
-        summary: `${name} items=${items.length}`,
-      };
-    }
-    case "load_skill": {
-      const skillName = readStringField(args, "name");
-      return {
-        summary: `${name} ${skillName ?? ""}`.trim(),
       };
     }
     default:

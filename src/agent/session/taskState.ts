@@ -108,7 +108,6 @@ export function applyCurrentTurnFrame(
   const objective = truncate(userInput, 240);
   return {
     ...session,
-    todoItems: [],
     taskState: {
       objective,
       activeFiles: [],

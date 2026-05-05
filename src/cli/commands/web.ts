@@ -5,7 +5,6 @@ import fs from "node:fs";
 import type { CliOverrides, RuntimeConfig } from "../../types.js";
 import { writeStdoutLine } from "../../utils/stdio.js";
 import { startWorkbenchServer } from "../../web/server.js";
-import type { WorkbenchMode } from "../../web/events.js";
 
 export function registerWebCommand(
   program: Command,
@@ -22,20 +21,18 @@ export function registerWebCommand(
   program
     .command("web")
     .description("Open the local Kitty web workbench.")
-    .argument("[mode]", "Workbench mode: agent or spec. Defaults to agent.", parseMode, "agent")
     .option("--host <host>", "Host to bind the local workbench server.", "127.0.0.1")
     .option("-p, --port <port>", "Port to bind. Defaults to an available port.", parsePort)
-    .action(async (mode: WorkbenchMode, commandOptions: { host: string; port?: number }) => {
+    .action(async (commandOptions: { host: string; port?: number }) => {
       const runtime = await options.resolveRuntime(options.getCliOverrides());
       const handle = await startWorkbenchServer({
         cwd: runtime.cwd,
         config: runtime.config,
         host: commandOptions.host,
         port: commandOptions.port,
-        mode,
       });
 
-      writeStdoutLine(`Kitty web workbench (${mode}): ${handle.url}`);
+      writeStdoutLine(`Kitty web workbench: ${handle.url}`);
       writeStdoutLine("Press Ctrl+C to stop.");
       openEdgeInPrivate(handle.url);
 
@@ -49,13 +46,6 @@ function parsePort(value: string): number {
     throw new Error("Port must be an integer between 0 and 65535.");
   }
   return port;
-}
-
-function parseMode(value: string): WorkbenchMode {
-  if (value === "agent" || value === "spec") {
-    return value;
-  }
-  throw new Error("Mode must be agent or spec.");
 }
 
 function openEdgeInPrivate(url: string): void {

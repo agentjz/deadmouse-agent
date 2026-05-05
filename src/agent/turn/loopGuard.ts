@@ -2,18 +2,7 @@ import type { ToolCallRecord, ToolExecutionResult } from "../../types.js";
 
 const MAX_IDENTICAL_OBSERVATIONS = 2;
 
-const VOLATILE_STATE_TOOLS = new Set([
-  "read_inbox",
-  "list_teammates",
-  "background_check",
-  "task_list",
-  "task_get",
-  "worktree_events",
-  "worktree_list",
-  "worktree_get",
-  "shutdown_response",
-  "plan_approval",
-]);
+const VOLATILE_STATE_TOOLS = new Set<string>();
 
 interface ToolLoopObservation {
   resultSignature: string;
@@ -90,12 +79,7 @@ function isObservationTool(toolName: string): boolean {
     || toolName.startsWith("list_")
     || toolName.startsWith("find_")
     || toolName.startsWith("search_")
-    || toolName.startsWith("openapi_")
-    || toolName.startsWith("mineru_")
-    || toolName === "http_probe"
-    || toolName === "http_request"
-    || toolName === "http_suite"
-    || toolName === "network_trace";
+    || toolName === "read";
 }
 
 function isVolatileStateTool(toolName: string): boolean {

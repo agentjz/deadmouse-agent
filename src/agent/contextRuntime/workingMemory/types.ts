@@ -1,16 +1,8 @@
 import type {
   AcceptanceState,
   AcceptanceContractKind,
-  SessionCheckpointArtifact,
-  TodoStatus,
   VerificationStatus,
 } from "../../../types.js";
-
-export interface WorkingMemoryTodo {
-  id: string;
-  text: string;
-  status: TodoStatus;
-}
 
 export interface WorkingMemoryRecentToolBatch {
   tools: string[];
@@ -44,9 +36,7 @@ export interface AgentWorkingMemory {
   plannedActions: string[];
   completedActions: string[];
   blockers: string[];
-  todos: WorkingMemoryTodo[];
   recentToolBatch?: WorkingMemoryRecentToolBatch;
-  evidenceArtifacts: SessionCheckpointArtifact[];
   verification?: WorkingMemoryVerification;
   acceptance?: WorkingMemoryAcceptance;
   checkpointPhase?: string;

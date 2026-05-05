@@ -1,9 +1,7 @@
 import { buildFieldBlock, type PromptField } from "../../prompt/structured.js";
 import { buildWorkingMemoryPromptBlocks } from "../../contextRuntime/workingMemory/prompt.js";
 import {
-  buildCapabilityBlock,
   buildRuntimeEnvironmentBlock,
-  buildSkillBlock,
 } from "../runtimeFacts.js";
 import type { AgentProfile, AgentRuntimeFactsProfile, RuntimeFactsProfileInput } from "../types.js";
 
@@ -47,8 +45,6 @@ function buildCavemanRuntimeFactBlocks(input: RuntimeFactsProfileInput): string[
       memoryTitle: "Work memory",
     }),
     buildSignalBlock(input),
-    buildCapabilityBlock(input),
-    buildSkillBlock(input),
     buildRuntimeEnvironmentBlock(input),
   ].filter((block): block is string => Boolean(block));
 }
@@ -58,7 +54,7 @@ function buildSignalBlock(input: RuntimeFactsProfileInput): string | undefined {
   if (input.workingMemory.objective) {
     fields.push({ label: "Target", value: "current user input" });
   }
-  if (input.workingMemory.verification || input.workingMemory.evidenceArtifacts.length > 0) {
+  if (input.workingMemory.verification) {
     fields.push({ label: "Evidence", value: "recorded" });
   }
   if (input.workingMemory.acceptance) {
@@ -66,12 +62,6 @@ function buildSignalBlock(input: RuntimeFactsProfileInput): string | undefined {
   }
   if (input.workingMemory.checkpointStatus) {
     fields.push({ label: "Checkpoint", value: "current objective only" });
-  }
-  if (input.runtimeState.capabilityPresentation) {
-    fields.push({ label: "Capabilities", value: "visible" });
-  }
-  if (input.skillRuntimeState.loadedSkills.length > 0) {
-    fields.push({ label: "Skills", value: String(input.skillRuntimeState.loadedSkills.length) });
   }
   return buildFieldBlock("Signal facts", fields);
 }

@@ -1,9 +1,7 @@
 import { deriveAcceptanceState, normalizeAcceptanceState } from "./contract.js";
 import { evaluateCommandChecks } from "./commandChecks.js";
 import { evaluateFileChecks } from "./fileChecks.js";
-import { evaluateHttpChecks } from "./httpChecks.js";
 import { determineAcceptancePhase } from "./phase.js";
-import { collectAcceptanceSignals } from "./signals.js";
 import { buildAcceptanceSummary } from "./summary.js";
 import type {
   AcceptanceState,
@@ -28,13 +26,11 @@ export async function evaluateAcceptanceState(input: {
 
   const fileChecks = await evaluateFileChecks(previous.contract, input.cwd);
   const commandChecks = evaluateCommandChecks(previous.contract, input.session.messages);
-  const signals = collectAcceptanceSignals(input.session.messages);
-  const httpChecks = evaluateHttpChecks(previous.contract, signals);
-  const completedChecks = [...fileChecks.completedChecks, ...commandChecks.completedChecks, ...httpChecks.completedChecks];
-  const pendingChecks = [...fileChecks.pendingChecks, ...commandChecks.pendingChecks, ...httpChecks.pendingChecks];
+  const completedChecks = [...fileChecks.completedChecks, ...commandChecks.completedChecks];
+  const pendingChecks = [...fileChecks.pendingChecks, ...commandChecks.pendingChecks];
   const phase = determineAcceptancePhase({
     contract: previous.contract,
-    hasSuccessfulDocumentRead: signals.some((signal) => signal.kind === "document_read_completed"),
+    hasSuccessfulDocumentRead: false,
     fileChecks,
     pendingChecks,
   });

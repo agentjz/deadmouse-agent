@@ -4,6 +4,7 @@ import type { SessionStoreLike } from "../agent/session.js";
 import { runBoundHostTurn } from "../host/boundTurn.js";
 import { ensureBoundSession, persistBoundSession } from "../host/session.js";
 import type { HostManagedTurnRunner } from "../host/types.js";
+import { resolveHostStateRoot } from "../observability/hostEvents.js";
 import type { RuntimeConfig, SessionRecord } from "../types.js";
 import type { TelegramAttachmentStoreLike } from "./attachmentStore.js";
 import type { TelegramBotApiClient } from "./botApiClient.js";
@@ -12,7 +13,6 @@ import { handleTelegramLocalCommand } from "./localCommands.js";
 import type { TelegramLogger } from "./logger.js";
 import { TelegramOutputPort } from "./outputPort.js";
 import type { TelegramSessionBinding, TelegramSessionMapStoreLike } from "./sessionMapStore.js";
-import { createTelegramSendFileTool } from "./sendFileTool.js";
 import { TelegramTurnDisplay } from "./turnDisplay.js";
 import { createLoggedTelegramCallbacks } from "./turnLogging.js";
 import type { TelegramPrivateFileMessage, TelegramPrivateMessage } from "./types.js";
@@ -100,13 +100,6 @@ export async function runTelegramTurn(options: {
       chatId: options.message.chatId,
       sessionId: session.id,
     });
-    const extraTools = [
-      createTelegramSendFileTool({
-        chatId: options.message.chatId,
-        deliveryQueue: options.deliveryQueue as never,
-        logger: options.logger,
-      }),
-    ];
     options.logger.info("starting turn", {
       peerKey: options.message.peerKey,
       userId: options.message.userId,
@@ -128,7 +121,6 @@ export async function runTelegramTurn(options: {
         output,
         display,
         callbacks,
-        extraTools,
         shouldAbortOnStart: () => options.consumePendingStop(options.message.peerKey),
         markQueuedTurnStarted: () => options.markQueuedTurnStarted(options.message.peerKey),
         createActiveTurn: (controller, sessionId) => ({
@@ -265,9 +257,3 @@ function touchBinding(binding: TelegramSessionBinding, sessionId: string): Teleg
   };
 }
 
-function resolveHostStateRoot(stateDir: string, fallbackCwd: string): string {
-  const kittyDir = path.dirname(stateDir);
-  return path.basename(kittyDir).toLowerCase() === ".kitty"
-    ? path.dirname(kittyDir)
-    : fallbackCwd;
-}

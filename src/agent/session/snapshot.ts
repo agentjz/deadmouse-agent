@@ -1,8 +1,6 @@
 import type {
-  ExternalizedToolResultReference,
   SessionRecord,
   StoredMessage,
-  TodoItem,
   ToolCallRecord,
 } from "../../types.js";
 import { deriveAcceptanceState, normalizeAcceptanceState } from "../acceptance.js";
@@ -16,7 +14,6 @@ import {
   createUnsupportedSessionSchemaError,
 } from "./errors.js";
 import { deriveTaskState, normalizeSessionRecord as normalizeTaskStateSessionRecord } from "./taskState.js";
-import { deriveTodoItems, normalizeTodoItems } from "./todos.js";
 import { readUserInput } from "./turnFrame.js";
 
 const CURRENT_SESSION_SCHEMA_VERSION = 1;
@@ -29,7 +26,6 @@ const SESSION_SNAPSHOT_KEYS = new Set([
   "title",
   "messageCount",
   "messages",
-  "todoItems",
   "taskState",
   "checkpoint",
   "verificationState",
@@ -75,7 +71,6 @@ export function parseSessionSnapshot(raw: string, sessionPath: string): SessionR
     title: readOptionalString(record.title, "title", sessionPath),
     messageCount: typeof record.messageCount === "number" ? Math.trunc(record.messageCount) : 0,
     messages: readMessages(record.messages, sessionPath),
-    todoItems: readTodoItems(record.todoItems, sessionPath),
     taskState: readOptionalObject(record.taskState, "taskState", sessionPath) as SessionRecord["taskState"],
     checkpoint: readOptionalObject(record.checkpoint, "checkpoint", sessionPath) as SessionRecord["checkpoint"],
     verificationState: readOptionalObject(record.verificationState, "verificationState", sessionPath) as SessionRecord["verificationState"],
@@ -96,7 +91,6 @@ export function prepareSessionRecordForSave(session: SessionRecord): SessionReco
     title: session.title ?? deriveSessionTitle(normalizedMessages),
     messageCount: normalizedMessages.length,
     messages: normalizedMessages,
-    todoItems: deriveTodoItems(normalizedMessages, session.todoItems ?? []),
     taskState: deriveTaskState(normalizedMessages, session.taskState),
     verificationState,
     acceptanceState: normalizeAcceptanceState(
@@ -116,7 +110,6 @@ export function normalizeLoadedSessionRecord(session: SessionRecord): SessionRec
 
   return {
     ...normalized,
-    todoItems: deriveTodoItems(normalized.messages ?? [], normalizeTodoItems(session.todoItems)),
     acceptanceState: normalizeAcceptanceState(
       deriveAcceptanceState(normalized.messages ?? [], normalized.acceptanceState),
     ),
@@ -152,7 +145,6 @@ function readMessage(value: unknown, index: number, sessionPath: string): Stored
     tool_call_id: readOptionalString(record.tool_call_id, "tool_call_id", sessionPath, `messages[${index}]`),
     tool_calls: readToolCalls(record.tool_calls, sessionPath, index),
     reasoningContent: readOptionalString(record.reasoningContent, "reasoningContent", sessionPath, `messages[${index}]`),
-    externalizedToolResult: readExternalizedToolResult(record.externalizedToolResult, sessionPath, index),
     createdAt: readRequiredString(record, "createdAt", sessionPath, `messages[${index}]`),
   };
 }
@@ -200,42 +192,6 @@ function readToolCalls(value: unknown, sessionPath: string, index: number): Tool
       },
     };
   });
-}
-
-function readExternalizedToolResult(
-  value: unknown,
-  sessionPath: string,
-  index: number,
-): ExternalizedToolResultReference | undefined {
-  const record = readOptionalObject(value, "externalizedToolResult", sessionPath, `messages[${index}]`);
-  if (!record) {
-    return undefined;
-  }
-
-  const scope = readRequiredString(record, "scope", sessionPath, `messages[${index}].externalizedToolResult`);
-  if (scope !== "project_state_root") {
-    throw createSessionCorruptError(sessionPath, `messages[${index}].externalizedToolResult.scope must be 'project_state_root'`);
-  }
-
-  return {
-    scope,
-    storagePath: readRequiredString(record, "storagePath", sessionPath, `messages[${index}].externalizedToolResult`),
-    byteLength: readRequiredNumber(record, "byteLength", sessionPath, `messages[${index}].externalizedToolResult`),
-    charLength: readRequiredNumber(record, "charLength", sessionPath, `messages[${index}].externalizedToolResult`),
-    preview: readRequiredString(record, "preview", sessionPath, `messages[${index}].externalizedToolResult`),
-    sha256: readRequiredString(record, "sha256", sessionPath, `messages[${index}].externalizedToolResult`),
-  };
-}
-
-function readTodoItems(value: unknown, sessionPath: string): TodoItem[] | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-  if (!Array.isArray(value)) {
-    throw createSessionCorruptError(sessionPath, "todoItems must be an array when present");
-  }
-
-  return normalizeTodoItems(value);
 }
 
 function readOptionalObject(
@@ -291,20 +247,6 @@ function readOptionalString(
   }
 
   return value;
-}
-
-function readRequiredNumber(
-  record: Record<string, unknown>,
-  key: string,
-  sessionPath: string,
-  scope?: string,
-): number {
-  const value = record[key];
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    throw createSessionCorruptError(sessionPath, `${scope ? `${scope}.` : ""}${key} must be a finite number`);
-  }
-
-  return Math.trunc(value);
 }
 
 function deriveSessionTitle(messages: StoredMessage[]): string | undefined {

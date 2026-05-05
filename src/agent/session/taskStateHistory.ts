@@ -100,10 +100,6 @@ function formatCompletedAction(toolName: string, payload: Record<string, unknown
     return `bash ${truncate(oneLine(command), 120)} (exit ${exitCode})`;
   }
 
-  if (toolName === "load_skill") {
-    return "load_skill";
-  }
-
   return pathValue ? `${toolName} ${truncate(pathValue, 160)}` : toolName;
 }
 

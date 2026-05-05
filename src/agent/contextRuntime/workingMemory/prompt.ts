@@ -30,10 +30,6 @@ export function buildCurrentWorksetBlock(
       value: memory.objective,
     });
   }
-  const inProgressTodo = memory.todos.find((todo) => todo.status === "in_progress");
-  if (inProgressTodo) {
-    fields.push({ label: "In progress", value: inProgressTodo.text });
-  }
   if (memory.plannedActions.length > 0) {
     fields.push({ label: "Planned actions", value: formatLimitedList(memory.plannedActions, 5) });
   }
@@ -55,10 +51,6 @@ export function buildSessionWorkingMemoryBlock(
   if (memory.completedActions.length > 0) {
     fields.push({ label: "Completed", value: formatLimitedList(memory.completedActions, 5) });
   }
-  const pendingTodos = memory.todos.filter((todo) => todo.status === "pending");
-  if (pendingTodos.length > 0) {
-    fields.push({ label: "Pending todos", value: formatLimitedList(pendingTodos.map((todo) => todo.text), 5) });
-  }
   if (memory.recentToolBatch) {
     fields.push({
       label: "Recent tool batch",
@@ -67,12 +59,6 @@ export function buildSessionWorkingMemoryBlock(
   }
   if (memory.recentToolBatch?.changedPaths.length) {
     fields.push({ label: "Changed paths", value: formatLimitedList(memory.recentToolBatch.changedPaths, 5) });
-  }
-  if (memory.evidenceArtifacts.length > 0) {
-    fields.push({
-      label: "Evidence artifacts",
-      value: formatLimitedList(memory.evidenceArtifacts.map((artifact) => artifact.label), 4),
-    });
   }
   if (memory.verification) {
     fields.push({ label: "Verification", value: formatVerification(memory) });
@@ -95,7 +81,7 @@ function buildHistoryBoundaryBlock(memory: AgentWorkingMemory): string | undefin
   return buildFieldBlock("History boundary", [
     {
       label: "Policy",
-      value: "Raw session history stays in the evidence store; same-session conversation brief and this current-objective working memory are the only automatic continuity surfaces.",
+      value: "Raw session history stays in session state; same-session conversation brief and this current-objective working memory are the only automatic continuity surfaces.",
     },
   ]);
 }

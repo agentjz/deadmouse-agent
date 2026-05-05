@@ -47,7 +47,7 @@ export function registerProjectCommands(
     .option("-n, --limit <count>", "Number of changes to show", (value) => Number.parseInt(value, 10), 20)
     .action(async (changeId: string | undefined, commandOptions: { limit?: number }) => {
       const runtime = await options.resolveRuntime(options.getCliOverrides());
-      const { ChangeStore } = await import("../../changes/store.js");
+      const { ChangeStore } = await import("../../agent/changes/store.js");
       const changeStore = new ChangeStore(runtime.paths.changesDir);
 
       if (changeId) {
@@ -82,7 +82,7 @@ export function registerProjectCommands(
     .argument("[changeId]", "Optional change id")
     .action(async (changeId: string | undefined) => {
       const runtime = await options.resolveRuntime(options.getCliOverrides());
-      const { ChangeStore } = await import("../../changes/store.js");
+      const { ChangeStore } = await import("../../agent/changes/store.js");
       const changeStore = new ChangeStore(runtime.paths.changesDir);
       const result = await changeStore.undo(changeId);
 

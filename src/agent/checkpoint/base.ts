@@ -1,4 +1,4 @@
-﻿import type { SessionCheckpoint, SessionRecord } from "../../types.js";
+import type { SessionCheckpoint, SessionRecord } from "../../types.js";
 import {
   deriveCompletedSteps,
   deriveRecentToolBatchFromMessages,
@@ -20,7 +20,6 @@ export function createEmptyCheckpoint(timestamp = new Date().toISOString()): Ses
       },
       updatedAt: timestamp,
     },
-    evidenceArtifacts: [],
     updatedAt: timestamp,
   };
 }
@@ -46,6 +45,5 @@ export function deriveCheckpointFromSession(
     ...createCheckpointForObjective(normalizeText(session.taskState?.objective) || undefined, timestamp),
     completedSteps: deriveCompletedSteps(session),
     recentToolBatch,
-    evidenceArtifacts: recentToolBatch?.artifacts ?? [],
   };
 }

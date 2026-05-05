@@ -1,5 +1,5 @@
-import type { RecoveryRequestConfig } from "../retryPolicy.js";
-import type { ProviderRecoveryBudgetSnapshot } from "../recoveryBudget.js";
+import type { RecoveryRequestConfig } from "../provider/retryPolicy.js";
+import type { ProviderRecoveryBudgetSnapshot } from "../provider/recoveryBudget.js";
 import type { RunTurnResult } from "../types.js";
 import type { ManagedSliceBudgetSnapshot } from "../turn/managedBudget.js";
 import type {
@@ -110,18 +110,6 @@ export function createYieldTransition(
   };
 }
 
-export function createExecutionDispatchYieldTransition(
-  timestamp = new Date().toISOString(),
-): RuntimeYieldTransition {
-  return {
-    action: "yield",
-    reason: {
-      code: "yield.execution_dispatch",
-    },
-    timestamp,
-  };
-}
-
 export function createProviderRecoveryBudgetPauseTransition(
   snapshot: ProviderRecoveryBudgetSnapshot,
   timestamp = new Date().toISOString(),
@@ -226,9 +214,7 @@ export function buildRunTurnResult(input: {
     yielded: input.transition.action === "yield",
     yieldReason:
       input.transition.action === "yield"
-        ? input.transition.reason.code === "yield.tool_step_limit"
-          ? `tool_steps_${input.transition.reason.toolSteps}`
-          : "execution_dispatch"
+        ? `tool_steps_${input.transition.reason.toolSteps}`
         : undefined,
     paused: input.transition.action === "pause",
     pauseReason:

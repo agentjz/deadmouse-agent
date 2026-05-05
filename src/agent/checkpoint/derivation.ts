@@ -1,14 +1,7 @@
-import type { ExternalizedToolResultReference, SessionCheckpointArtifact, SessionCheckpointToolBatch, SessionRecord, StoredMessage } from "../../types.js";
-import { MAX_BATCH_PATHS, MAX_BATCH_TOOLS, MAX_COMPLETED_STEPS, MAX_LABEL_CHARS, MAX_PREVIEW_CHARS, MAX_SUMMARY_CHARS, normalizeArtifacts, normalizeText, normalizeTimestamp, oneLine, readString, safeParseObject, takeLastUnique, truncate } from "./shared.js";
+import type { SessionCheckpointToolBatch, SessionRecord, StoredMessage } from "../../types.js";
+import { MAX_BATCH_PATHS, MAX_BATCH_TOOLS, MAX_COMPLETED_STEPS, MAX_SUMMARY_CHARS, normalizeText, normalizeTimestamp, readString, safeParseObject, takeLastUnique, truncate } from "./shared.js";
 
 export function deriveCompletedSteps(session: SessionRecord): string[] {
-  const completedTodos = (session.todoItems ?? [])
-    .filter((item) => item.status === "completed")
-    .map((item) => normalizeText(item.text))
-    .filter(Boolean) as string[];
-  if (completedTodos.length > 0) {
-    return takeLastUnique(completedTodos, MAX_COMPLETED_STEPS);
-  }
   const completedActions = session.taskState?.completedActions ?? [];
   return takeLastUnique(completedActions, MAX_COMPLETED_STEPS);
 }
@@ -50,9 +43,6 @@ export function buildToolBatch(
   if (tools.length === 0) {
     return undefined;
   }
-  const artifacts = normalizeArtifacts(
-    toolMessages.flatMap((message) => createArtifactsFromMessage(message)),
-  );
   const batchChangedPaths = takeLastUnique(
     [
       ...(changedPaths ?? []),
@@ -69,41 +59,10 @@ export function buildToolBatch(
 
   return {
     tools,
-    summary: buildToolBatchSummary(tools, batchChangedPaths, artifacts),
+    summary: buildToolBatchSummary(tools, batchChangedPaths),
     changedPaths: batchChangedPaths,
-    artifacts,
     recordedAt,
   };
-}
-
-function createArtifactsFromMessage(message: StoredMessage): SessionCheckpointArtifact[] {
-  const payload = safeParseObject(message.content);
-  const artifacts: SessionCheckpointArtifact[] = [];
-
-  const externalized = message.externalizedToolResult ?? readExternalizedResult(payload);
-  if (externalized) {
-    artifacts.push({
-      kind: "externalized_tool_result",
-      label: buildArtifactLabel(message.name, payload, externalized.storagePath),
-      toolName: normalizeText(message.name) || undefined,
-      path: readString(payload?.path),
-      storagePath: externalized.storagePath,
-      preview: truncate(readString(payload?.preview) ?? externalized.preview, MAX_PREVIEW_CHARS),
-      summary: truncate(readString(payload?.summary), MAX_SUMMARY_CHARS),
-      sha256: externalized.sha256,
-    });
-  } else if (payload && (readString(payload.preview) || readString(payload.path))) {
-    artifacts.push({
-      kind: "tool_preview",
-      label: buildArtifactLabel(message.name, payload, readString(payload.path)),
-      toolName: normalizeText(message.name) || undefined,
-      path: readString(payload.path),
-      preview: truncate(readString(payload.preview), MAX_PREVIEW_CHARS),
-      summary: truncate(readString(payload.summary), MAX_SUMMARY_CHARS),
-    });
-  }
-
-  return artifacts;
 }
 
 function readPathFromMessage(message: StoredMessage): string | undefined {
@@ -114,58 +73,11 @@ function readPathFromMessage(message: StoredMessage): string | undefined {
 function buildToolBatchSummary(
   toolNames: string[],
   changedPaths: string[],
-  artifacts: SessionCheckpointArtifact[],
 ): string {
   const fragments = [`Ran ${toolNames.join(", ")}`];
 
   if (changedPaths.length > 0) {
     fragments.push(`changed ${changedPaths.join(" | ")}`);
   }
-  if (artifacts.length > 0) {
-    fragments.push(`artifacts ${artifacts.map((artifact) => artifact.label).join(" | ")}`);
-  }
   return truncate(fragments.join("; "), MAX_SUMMARY_CHARS)!;
-}
-
-function buildArtifactLabel(
-  toolName: string | undefined,
-  payload: Record<string, unknown> | null,
-  fallbackPath: string | undefined,
-): string {
-  const primary =
-    readString(payload?.path) ??
-    readString(payload?.title) ??
-    readString(payload?.summary) ??
-    fallbackPath ??
-    toolName ??
-    "tool artifact";
-
-  return truncate(oneLine(primary), MAX_LABEL_CHARS)!;
-}
-
-function readExternalizedResult(
-  payload: Record<string, unknown> | null,
-): ExternalizedToolResultReference | undefined {
-  if (!payload) {
-    return undefined;
-  }
-  const storagePath = readString(payload.storagePath);
-  if (!storagePath) {
-    return undefined;
-  }
-
-  return {
-    scope: "project_state_root",
-    storagePath,
-    byteLength:
-      typeof payload.byteLength === "number" && Number.isFinite(payload.byteLength)
-        ? Math.trunc(payload.byteLength)
-        : 0,
-    charLength:
-      typeof payload.charLength === "number" && Number.isFinite(payload.charLength)
-        ? Math.trunc(payload.charLength)
-        : 0,
-    preview: readString(payload.preview) ?? "",
-    sha256: readString(payload.sha256) ?? "",
-  };
 }

@@ -3,7 +3,7 @@ import chalk from "chalk";
 import type { RuntimeUiChannel } from "./events.js";
 import { getRuntimeUiChannelIdentity } from "./channelIdentity.js";
 
-export type RuntimeUiSemanticTag = "tool" | "dispatch" | "result" | "preview" | "content";
+export type RuntimeUiSemanticTag = "tool" | "result" | "preview" | "content";
 
 export function formatRuntimeUiChannelHeader(channel: RuntimeUiChannel): string {
   return channelHeaderColor(channel)(`[${channelLabel(channel)}]`);
@@ -12,7 +12,6 @@ export function formatRuntimeUiChannelHeader(channel: RuntimeUiChannel): string 
 export function formatRuntimeUiSemanticTag(tag: RuntimeUiSemanticTag, state?: "ok" | "failed"): string {
   switch (tag) {
     case "tool":
-    case "dispatch":
       return chalk.magenta(`[${tag}]`);
     case "result":
       return state === "failed" ? chalk.red("[result]") : "[result]";
@@ -32,12 +31,6 @@ export function channelLabel(channel: RuntimeUiChannel): string {
 
 function colorForChannel(channel: RuntimeUiChannel): (text: string) => string {
   switch (channel) {
-    case "dream":
-    case "workflow":
-    case "subagent":
-    case "team":
-    case "background":
-      return chalk.gray;
     case "system":
       return chalk.gray;
     case "lead":
@@ -48,11 +41,6 @@ function colorForChannel(channel: RuntimeUiChannel): (text: string) => string {
 function channelHeaderColor(channel: RuntimeUiChannel): (text: string) => string {
   switch (channel) {
     case "lead":
-    case "dream":
-    case "workflow":
-    case "subagent":
-    case "team":
-    case "background":
     case "system":
       return chalk.red.bold;
   }

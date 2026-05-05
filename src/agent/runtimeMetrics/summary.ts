@@ -39,10 +39,6 @@ export interface SessionRuntimeSummary {
   continuations: number;
   recoveries: number;
   compressions: number;
-  externalizedResults: {
-    count: number;
-    byteLengthTotal: number;
-  };
   topTools: Array<{
     name: string;
     callCount: number;
@@ -101,10 +97,6 @@ export function buildSessionRuntimeSummary(
     continuations: stats.events.continuationCount,
     recoveries: stats.events.recoveryCount,
     compressions: stats.events.compressionCount,
-    externalizedResults: {
-      count: stats.externalizedToolResults.count,
-      byteLengthTotal: stats.externalizedToolResults.byteLengthTotal,
-    },
     topTools,
     slowestStep: pickSlowestStep(stats.model.waitDurationMsTotal, topTools),
     durableTruth: buildDurableTruth(session, stats),

@@ -1,4 +1,4 @@
-import { buildToolCallDisplay, buildToolResultDisplay } from "./toolDisplay.js";
+import { buildToolCallDisplay, buildToolFailureDetail, buildToolResultDisplay } from "./toolDisplay.js";
 import {
   normalizeTerminalVerbosity,
   shouldShowToolCallPreview,
@@ -6,7 +6,6 @@ import {
   truncateVisiblePreview,
   type TerminalVerbosity,
 } from "./previewPolicy.js";
-import { colorizeTodoMarkers } from "../ui/todoStyling.js";
 import { writeStdout, writeStdoutLine } from "../utils/stdio.js";
 import type { RuntimeUiChannel, RuntimeUiEvent } from "./events.js";
 import { colorRuntimeUiText, formatRuntimeUiChannelHeader, formatRuntimeUiSemanticTag } from "./theme.js";
@@ -108,10 +107,6 @@ export function createRuntimeUiTerminalRenderer(options: {
           flush();
           writeFormattedLine(event, state, options, verbosity);
           return;
-        case "dispatch":
-          flush();
-          writeFormattedLine(event, state, options, verbosity);
-          return;
         case "tool_call":
           flush();
           renderToolCall(event, state, options, verbosity);
@@ -123,18 +118,6 @@ export function createRuntimeUiTerminalRenderer(options: {
         case "tool_error":
           flush();
           renderToolError(event, state, options);
-          return;
-        case "foreground_start":
-          flush();
-          writeFormattedLine(event, state, options, verbosity);
-          return;
-        case "foreground_message":
-          flush();
-          writeFormattedLine(event, state, options, verbosity);
-          return;
-        case "foreground_end":
-          flush();
-          writeFormattedLine(event, state, options, verbosity);
           return;
       }
     },
@@ -180,21 +163,18 @@ function renderToolResult(
   const display = buildToolResultDisplay(name, event.payload ?? event.message ?? "", options.cwd);
   const ok = event.ok ?? display.ok !== false;
   if (!ok) {
-    const detail = truncateVisiblePreview(display.preview ?? event.message ?? "");
+    const detail = buildToolFailureDetail(name, event.payload ?? event.message ?? "", options.cwd);
     writeSemanticLine("result", formatRuntimeUiEventMessage(event, options, verbosity, detail), "failed");
   }
   if (display.preview && shouldShowToolResultPreview(name, verbosity)) {
-    const compacted = name === "todo_write" ? display.preview : truncateVisiblePreview(display.preview);
-    const colored = name === "todo_write" ? colorizeTodoMarkers(compacted) : compacted;
-    writePreview(event.channel, "preview", colored, verbosity);
+    writePreview(event.channel, "preview", truncateVisiblePreview(display.preview), verbosity);
   }
 }
 
 function renderToolError(event: RuntimeUiEvent, state: { channel?: RuntimeUiChannel }, options: { cwd?: string }): void {
   ensureRenderChannel(state, event.channel);
   const name = event.toolName ?? "tool";
-  const display = buildToolResultDisplay(name, event.payload ?? event.message ?? "", options.cwd);
-  const detail = truncateVisiblePreview(display.preview ?? event.message ?? "");
+  const detail = buildToolFailureDetail(name, event.payload ?? event.message ?? "", options.cwd);
   writeSemanticLine("result", formatRuntimeUiEventMessage(event, options, "normal", detail), "failed");
 }
 
@@ -212,7 +192,7 @@ function writePreview(
 }
 
 function writeSemanticLine(
-  tag: "tool" | "dispatch" | "result",
+  tag: "tool" | "result",
   message: string,
   state?: "ok" | "failed",
 ): void {
@@ -228,10 +208,6 @@ function writeFormattedLine(
 ): void {
   ensureRenderChannel(state, event.channel);
   const message = formatRuntimeUiEventMessage(event, options, verbosity);
-  if (event.kind === "dispatch") {
-    writeSemanticLine("dispatch", message);
-    return;
-  }
   writeStdoutLine(colorRuntimeUiText(event.channel, message));
 }
 
@@ -243,13 +219,7 @@ function formatRuntimeUiEventMessage(
 ): string {
   switch (event.kind) {
     case "status":
-    case "dispatch":
-    case "foreground_message":
       return event.message ?? "";
-    case "foreground_start":
-      return formatRuntimeUiMessage("foreground started", event.executionId);
-    case "foreground_end":
-      return formatRuntimeUiMessage("foreground ended", event.executionId);
     case "tool_call": {
       const name = event.toolName ?? "tool";
       const display = buildToolCallDisplay(name, event.payload ?? "{}", options.toolArgsMaxChars ?? 160, options.cwd);
@@ -263,15 +233,14 @@ function formatRuntimeUiEventMessage(
       const tracked = display.tracked ? " tracked" : "";
       const summary = display.summary ? `${display.summary} ${status}${tracked}`.trim() : `${name} ${status}`;
       if (!ok) {
-        const detail = forcedDetail ?? truncateVisiblePreview(display.preview ?? event.message ?? "");
+        const detail = forcedDetail ?? buildToolFailureDetail(name, event.payload ?? event.message ?? "", options.cwd);
         return formatRuntimeUiMessage("result", summary, detail);
       }
       return formatRuntimeUiMessage("result", summary);
     }
     case "tool_error": {
       const name = event.toolName ?? "tool";
-      const display = buildToolResultDisplay(name, event.payload ?? event.message ?? "", options.cwd);
-      const detail = forcedDetail ?? truncateVisiblePreview(display.preview ?? event.message ?? "");
+      const detail = forcedDetail ?? buildToolFailureDetail(name, event.payload ?? event.message ?? "", options.cwd);
       return formatRuntimeUiMessage("result", `${name} failed`, detail);
     }
     case "assistant_text":
@@ -291,8 +260,6 @@ function formatRuntimeUiEventPlainLine(event: RuntimeUiEvent, message: string): 
       return `[result] ${message.replace(/^result\s+/, "")}`.trimEnd();
     case "tool_error":
       return `[result] ${message.replace(/^result\s+/, "")}`.trimEnd();
-    case "dispatch":
-      return `[dispatch] ${message}`.trimEnd();
     default:
       return message.trimEnd();
   }

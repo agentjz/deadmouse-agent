@@ -1,6 +1,5 @@
 import type { AgentCallbacks, RunTurnResult } from "../agent/types.js";
 import type { SessionStoreLike } from "../agent/session.js";
-import type { RegisteredTool } from "../capabilities/tools/core/types.js";
 import type { RuntimeConfig, SessionRecord } from "../types.js";
 import { runHostTurn } from "./turn.js";
 import type { HostTurnDependencies } from "./types.js";
@@ -28,8 +27,6 @@ export interface BoundHostTurnOptions<TActiveTurn> {
   output: BoundHostTurnOutput;
   display: BoundHostTurnDisplay;
   callbacks?: AgentCallbacks;
-  mode?: "agent" | "spec";
-  extraTools?: readonly RegisteredTool[];
   shouldAbortOnStart?: () => boolean;
   markQueuedTurnStarted: () => void;
   createActiveTurn: (controller: AbortController, sessionId: string) => TActiveTurn;
@@ -65,8 +62,6 @@ export async function runBoundHostTurn<TActiveTurn>(
         sessionStore: options.sessionStore,
         abortSignal: controller.signal,
         callbacks: options.callbacks,
-        mode: options.mode,
-        extraTools: options.extraTools,
       },
       {
         ...dependencies,

@@ -1,9 +1,7 @@
 import { buildFieldBlock, type PromptField } from "../../prompt/structured.js";
 import { buildWorkingMemoryPromptBlocks } from "../../contextRuntime/workingMemory/prompt.js";
 import {
-  buildCapabilityBlock,
   buildRuntimeEnvironmentBlock,
-  buildSkillBlock,
 } from "../runtimeFacts.js";
 import type { AgentProfile, AgentRuntimeFactsProfile, RuntimeFactsProfileInput } from "../types.js";
 
@@ -49,8 +47,6 @@ function buildGrokRuntimeFactBlocks(input: RuntimeFactsProfileInput): string[] {
       memoryTitle: "Current evidence memory",
     }),
     buildCutLineBlock(input),
-    buildCapabilityBlock(input),
-    buildSkillBlock(input),
     buildRuntimeEnvironmentBlock(input),
   ].filter((block): block is string => Boolean(block));
 }
@@ -60,7 +56,7 @@ function buildCutLineBlock(input: RuntimeFactsProfileInput): string | undefined 
   if (input.workingMemory.objective) {
     fields.push({ label: "Target locked", value: "yes" });
   }
-  if (input.workingMemory.verification || input.workingMemory.evidenceArtifacts.length > 0) {
+  if (input.workingMemory.verification) {
     fields.push({ label: "Recorded evidence", value: "present" });
   }
   if (input.workingMemory.acceptance) {
@@ -69,12 +65,5 @@ function buildCutLineBlock(input: RuntimeFactsProfileInput): string | undefined 
   if (input.workingMemory.checkpointStatus) {
     fields.push({ label: "Checkpoint", value: input.workingMemory.checkpointStatus });
   }
-  if (input.runtimeState.capabilityPresentation) {
-    fields.push({ label: "Capability surface", value: "visible" });
-  }
-  if (input.skillRuntimeState.loadedSkills.length > 0) {
-    fields.push({ label: "Loaded skills", value: String(input.skillRuntimeState.loadedSkills.length) });
-  }
-
   return buildFieldBlock("Decision facts", fields);
 }

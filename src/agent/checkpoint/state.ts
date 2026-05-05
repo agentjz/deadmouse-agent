@@ -1,4 +1,4 @@
-﻿import {
+import {
   buildCheckpointFlow,
   createToolBatchTransition,
   getTurnInputTransition,
@@ -12,8 +12,6 @@ import {
 } from "./derivation.js";
 import {
   fingerprintObjective,
-  mergeArtifacts,
-  normalizeArtifacts,
   normalizeText,
   normalizeTimestamp,
   normalizeToolBatch,
@@ -48,10 +46,6 @@ export function normalizeCheckpoint(
     completedSteps: takeLastUnique(checkpoint.completedSteps ?? [], 8),
     recentToolBatch: normalizeToolBatch(checkpoint.recentToolBatch),
     flow: normalizeCheckpointFlow(checkpoint.flow, status, timestamp),
-    evidenceArtifacts:
-      status === "completed"
-        ? []
-        : normalizeArtifacts(checkpoint.evidenceArtifacts ?? []),
     updatedAt: normalizeTimestamp(checkpoint.updatedAt, timestamp),
   };
 }
@@ -63,13 +57,6 @@ export function normalizeSessionCheckpoint(session: SessionRecord): SessionRecor
 
   if (checkpoint.completedSteps.length === 0) {
     checkpoint.completedSteps = deriveCompletedSteps(session);
-  }
-
-  if (checkpoint.status !== "completed") {
-    checkpoint.evidenceArtifacts = mergeArtifacts(
-      checkpoint.evidenceArtifacts,
-      checkpoint.recentToolBatch?.artifacts ?? [],
-    );
   }
 
   checkpoint.flow = normalizeCheckpointFlow(checkpoint.flow, checkpoint.status, timestamp);
@@ -152,13 +139,6 @@ export function noteCheckpointToolBatch(
       ...checkpoint,
       completedSteps: deriveCompletedSteps(session),
       recentToolBatch,
-      evidenceArtifacts:
-        checkpoint.status === "completed"
-          ? []
-          : mergeArtifacts(
-              recentToolBatch?.artifacts ?? [],
-              checkpoint.evidenceArtifacts,
-            ),
       flow: buildCheckpointFlow({
         current: checkpoint.flow,
         status: checkpoint.status,

@@ -6,7 +6,6 @@ import type {
   ProjectContext,
   RuntimeConfig,
   SessionCheckpoint,
-  SkillRuntimeState,
   TaskState,
   VerificationState,
 } from "../../types.js";
@@ -24,7 +23,6 @@ export interface RuntimeFactsProfileInput {
   verificationState?: VerificationState;
   acceptanceState?: AcceptanceState;
   runtimeState: PromptRuntimeState;
-  skillRuntimeState: SkillRuntimeState;
   sessionBrief?: SessionConversationBrief;
   workingMemory: AgentWorkingMemory;
   checkpoint?: SessionCheckpoint;

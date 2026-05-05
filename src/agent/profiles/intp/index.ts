@@ -1,5 +1,5 @@
 import { buildWorkingMemoryPromptBlocks } from "../../contextRuntime/workingMemory/prompt.js";
-import { buildCapabilityBlock, buildRuntimeEnvironmentBlock, buildSkillBlock } from "../runtimeFacts.js";
+import { buildRuntimeEnvironmentBlock } from "../runtimeFacts.js";
 import type { AgentProfile, AgentRuntimeFactsProfile, RuntimeFactsProfileInput } from "../types.js";
 
 export const INTP_PROFILE_ID = "intp";
@@ -41,7 +41,5 @@ function buildIntpRuntimeFactBlocks(input: RuntimeFactsProfileInput): string[] {
   return [
     buildRuntimeEnvironmentBlock(input),
     ...buildWorkingMemoryPromptBlocks(input.workingMemory),
-    buildCapabilityBlock(input),
-    buildSkillBlock(input),
   ].filter((block): block is string => Boolean(block));
 }

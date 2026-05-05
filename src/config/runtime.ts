@@ -1,11 +1,10 @@
-﻿import { loadDotEnvFiles } from "./env.js";
+import { loadDotEnvFiles } from "./env.js";
 import { ensureAppDirectories, loadConfig } from "./fileStore.js";
 import {
   parseBooleanEnv,
   parseIntegerEnv,
   parseReasoningEffortEnv,
   parseThinkingEnv,
-  readMineruRuntimeConfig,
 } from "./runtimeEnv.js";
 import { normalizeConfig } from "./schema.js";
 import { resolveAgentProfile } from "../agent/profiles/registry.js";
@@ -93,10 +92,6 @@ export async function resolveRuntimeConfig(overrides: CliOverrides = {}): Promis
         parseIntegerEnv(process.env.KITTY_MAX_READ_BYTES) ?? fileConfig.maxReadBytes,
       maxSearchResults:
         parseIntegerEnv(process.env.KITTY_MAX_SEARCH_RESULTS) ?? fileConfig.maxSearchResults,
-      maxSpreadsheetPreviewRows:
-        parseIntegerEnv(process.env.KITTY_MAX_SPREADSHEET_PREVIEW_ROWS) ?? fileConfig.maxSpreadsheetPreviewRows,
-      maxSpreadsheetPreviewColumns:
-        parseIntegerEnv(process.env.KITTY_MAX_SPREADSHEET_PREVIEW_COLUMNS) ?? fileConfig.maxSpreadsheetPreviewColumns,
       commandStallTimeoutMs:
         parseIntegerEnv(process.env.KITTY_COMMAND_STALL_TIMEOUT_MS) ?? fileConfig.commandStallTimeoutMs,
       commandMaxRetries:
@@ -105,10 +100,6 @@ export async function resolveRuntimeConfig(overrides: CliOverrides = {}): Promis
         parseIntegerEnv(process.env.KITTY_COMMAND_RETRY_BACKOFF_MS) ?? fileConfig.commandRetryBackoffMs,
       showReasoning:
         parseBooleanEnv(process.env.KITTY_SHOW_REASONING) ?? fileConfig.showReasoning,
-      mcp: {
-        ...fileConfig.mcp,
-        enabled: parseBooleanEnv(process.env.KITTY_MCP_ENABLED) ?? fileConfig.mcp.enabled,
-      },
       telegram: telegramConfig,
     },
     {
@@ -126,7 +117,6 @@ export async function resolveRuntimeConfig(overrides: CliOverrides = {}): Promis
   return {
     ...merged,
     apiKey: process.env.KITTY_API_KEY ?? "",
-    mineru: readMineruRuntimeConfig(),
     paths,
     telegram: resolveTelegramRuntimeConfig(merged.telegram, projectRoots.stateRootDir),
   };

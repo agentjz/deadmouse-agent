@@ -1,4 +1,4 @@
-import type { MineruRuntimeConfig, RuntimeConfig } from "../types.js";
+import type { RuntimeConfig } from "../types.js";
 
 export function parseBooleanEnv(value: string | undefined): boolean | undefined {
   if (!value) {
@@ -56,34 +56,3 @@ export function parseThinkingEnv(value: string | undefined): RuntimeConfig["thin
   }
 }
 
-export function readMineruRuntimeConfig(): MineruRuntimeConfig {
-  return {
-    token: (process.env.MINERU_API_TOKEN ?? "").trim(),
-    baseUrl: (process.env.MINERU_BASE_URL ?? "https://mineru.net/api/v4").trim(),
-    agentBaseUrl: (process.env.MINERU_AGENT_BASE_URL ?? "https://mineru.net/api/v1").trim(),
-    modelVersion: (process.env.MINERU_MODEL_VERSION ?? "vlm").trim(),
-    language: (process.env.MINERU_LANGUAGE ?? "ch").trim(),
-    enableTable: parseBooleanEnv(process.env.MINERU_ENABLE_TABLE) ?? true,
-    enableFormula: parseBooleanEnv(process.env.MINERU_ENABLE_FORMULA) ?? true,
-    pollIntervalMs: clampNumber(
-      Number.parseInt(process.env.MINERU_POLL_INTERVAL_MS ?? "", 10),
-      200,
-      60_000,
-      2_000,
-    ),
-    timeoutMs: clampNumber(
-      Number.parseInt(process.env.MINERU_TIMEOUT_MS ?? "", 10),
-      5_000,
-      60 * 60 * 1000,
-      300_000,
-    ),
-  };
-}
-
-function clampNumber(value: number, min: number, max: number, fallback: number): number {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-
-  return Math.max(min, Math.min(max, Math.trunc(value)));
-}

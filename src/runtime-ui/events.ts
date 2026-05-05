@@ -2,24 +2,15 @@ export const RUNTIME_UI_EVENT_PROTOCOL = "kitty.runtime-ui-event" as const;
 
 export type RuntimeUiChannel =
   | "lead"
-  | "dream"
-  | "workflow"
-  | "subagent"
-  | "team"
-  | "background"
   | "system";
 
 export type RuntimeUiEventKind =
   | "assistant_text"
   | "reasoning"
   | "status"
-  | "dispatch"
   | "tool_call"
   | "tool_result"
-  | "tool_error"
-  | "foreground_start"
-  | "foreground_message"
-  | "foreground_end";
+  | "tool_error";
 
 export interface RuntimeUiEvent {
   protocol: typeof RUNTIME_UI_EVENT_PROTOCOL;
@@ -48,19 +39,6 @@ export function createRuntimeUiEvent(
 export function normalizeRuntimeUiChannel(value: string | undefined): RuntimeUiChannel {
   const normalized = String(value ?? "").trim().toLowerCase();
   switch (normalized) {
-    case "dream":
-    case "dreaming":
-      return "dream";
-    case "workflow":
-      return "workflow";
-    case "subagent":
-    case "sub-agent":
-      return "subagent";
-    case "team":
-    case "teammate":
-      return "team";
-    case "background":
-      return "background";
     case "lead":
       return "lead";
     default:

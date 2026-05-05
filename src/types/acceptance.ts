@@ -18,19 +18,11 @@ export interface AcceptanceCommandRequirement {
   commandContains: string;
 }
 
-export interface AcceptanceHttpRequirement {
-  id: string;
-  url: string;
-  status?: number;
-  bodyContains?: string[];
-}
-
 export interface AcceptanceContract {
   kind: AcceptanceContractKind;
   summary?: string;
   requiredFiles: AcceptanceFileRequirement[];
   commandChecks: AcceptanceCommandRequirement[];
-  httpChecks: AcceptanceHttpRequirement[];
 }
 
 export type AcceptanceStatus = "idle" | "active" | "satisfied";

@@ -1,24 +1,17 @@
 import { getErrorMessage } from "../agent/errors.js";
 import process from "node:process";
 import type { SessionStoreLike } from "../agent/session.js";
-import { loadProjectContext } from "../context/projectContext.js";
-import { reconcileBackgroundJobs } from "../execution/background.js";
-import { reconcileActiveExecutions } from "../execution/reconcile.js";
 import { runHostTurn } from "../host/turn.js";
-import { reconcileTeamState } from "../capabilities/team/reconcile.js";
 import type { HostManagedTurnRunner } from "../host/types.js";
 import type { RuntimeConfig, SessionRecord } from "../types.js";
 import { defaultInteractiveExitGuard, type InteractiveExitGuard, type InteractiveExitProcess } from "./exitGuard.js";
 import { handleLocalCommand, type LocalCommandResult } from "./localCommands.js";
 import type { InteractionShell } from "./shell.js";
-import type { RegisteredTool } from "../capabilities/tools/core/types.js";
 import type { PromptRuntimeState } from "../agent/prompt/types.js";
 
 export interface InteractiveTurnContext {
   cwd?: string;
   stateRootDir?: string;
-  mode?: "agent" | "spec";
-  extraTools?: readonly RegisteredTool[];
   runtimePromptState?: Partial<PromptRuntimeState>;
 }
 
@@ -47,7 +40,6 @@ export class InteractiveSessionDriver {
   }
 
   async run(): Promise<SessionRecord> {
-    await this.reconcileInteractiveRuntime();
     const releaseInterrupt = this.options.shell.input.bindInterrupt(() => {
       this.handleInterrupt();
     });
@@ -57,7 +49,7 @@ export class InteractiveSessionDriver {
       while (true) {
         const prompt = await this.options.shell.input.readInput("> ");
         if (prompt.kind === "closed") {
-          await this.terminateRunningProcessesForForcedExit("Input closed. Stopping running worker processes before exit.");
+          await this.terminateRunningProcessesForForcedExit("Input closed. Stopping running processes before exit.");
           return this.session;
         }
 
@@ -77,18 +69,6 @@ export class InteractiveSessionDriver {
     } finally {
       releaseProcessTermination();
       releaseInterrupt();
-    }
-  }
-
-  private async reconcileInteractiveRuntime(): Promise<void> {
-    try {
-      const projectContext = await loadProjectContext(this.options.cwd);
-      const rootDir = projectContext.stateRootDir;
-      await reconcileActiveExecutions(rootDir);
-      await reconcileTeamState(rootDir);
-      await reconcileBackgroundJobs(rootDir);
-    } catch (error) {
-      this.options.shell.output.warn(`Runtime recovery skipped: ${getErrorMessage(error)}`);
     }
   }
 
@@ -136,11 +116,11 @@ export class InteractiveSessionDriver {
       return "quit";
     }
 
-    this.options.shell.output.warn("Running worker processes detected. Exiting now will kill them all.");
+    this.options.shell.output.warn("Running processes detected. Exiting now will kill them all.");
     this.options.shell.output.plain(runningProcesses.map((process) => process.summary).join("\n"));
 
     const confirmation = await this.options.shell.input.readInput(
-      "Kill all running worker processes and exit? [y/N] ",
+      "Kill all running processes and exit? [y/N] ",
     );
 
     if (confirmation.kind !== "submit" || !isYes(confirmation.value)) {
@@ -176,7 +156,7 @@ export class InteractiveSessionDriver {
     }
 
     if (multiline.kind === "closed") {
-      await this.terminateRunningProcessesForForcedExit("Input closed during multiline mode. Stopping running worker processes before exit.");
+      await this.terminateRunningProcessesForForcedExit("Input closed during multiline mode. Stopping running processes before exit.");
       this.exitRequested = true;
       return;
     }
@@ -214,7 +194,7 @@ export class InteractiveSessionDriver {
     const signals: NodeJS.Signals[] = ["SIGHUP", "SIGTERM", "SIGBREAK"];
     const handler = (signal: NodeJS.Signals): void => {
       void this.terminateRunningProcessesForForcedExit(
-        `Received ${signal}. Stopping running worker processes before exit.`,
+        `Received ${signal}. Stopping running processes before exit.`,
       ).finally(() => {
         process.exit(0);
       });
@@ -254,14 +234,14 @@ export class InteractiveSessionDriver {
       this.options.shell.output.plain(runningProcesses.map((processInfo) => processInfo.summary).join("\n"));
       const result = await exitGuard.terminateProcesses(runningProcesses);
       if (result.failedPids.length > 0) {
-        this.options.shell.output.error(`Could not stop all worker processes. Still running: ${result.failedPids.join(", ")}.`);
+        this.options.shell.output.error(`Could not stop all running processes. Still running: ${result.failedPids.join(", ")}.`);
         return;
       }
 
-      this.options.shell.output.warn(`Stopped ${result.terminatedPids.length} worker process(es).`);
+      this.options.shell.output.warn(`Stopped ${result.terminatedPids.length} running process(es).`);
       this.options.shell.output.info("Session saved.");
     } catch (error) {
-      this.options.shell.output.error(`Failed to stop worker processes: ${getErrorMessage(error)}`);
+      this.options.shell.output.error(`Failed to stop running processes: ${getErrorMessage(error)}`);
     }
   }
 
@@ -283,13 +263,11 @@ export class InteractiveSessionDriver {
         input,
         cwd: turnContext?.cwd ?? this.options.cwd,
         stateRootDir: turnContext?.stateRootDir,
-        mode: turnContext?.mode ?? turnContext?.runtimePromptState?.mode ?? "agent",
         config: this.options.config,
         session: this.session,
         sessionStore: this.options.sessionStore,
         abortSignal: controller.signal,
         callbacks: turnDisplay.callbacks,
-        extraTools: turnContext?.extraTools,
         runtimePromptState: turnContext?.runtimePromptState,
       }, {
         runTurn: this.options.runTurn,

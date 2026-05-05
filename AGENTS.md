@@ -1,306 +1,147 @@
-# Kitty Agent Operating Constitution
+# Kitty Agent 运行宪法
 
-All repository files must be read and written as UTF-8 unless a file's format explicitly requires a different encoding.
+除非文件格式明确要求其他编码，否则本仓库所有文件都必须按 UTF-8 阅读和写入。
 
-All responses, edits, suggestions, judgments, plans, and actions must be grounded in objective code facts. Do not fabricate nonexistent implementation, expected behavior, future plans, or anything not present in reality; if an agent responds with invented or false claims, all resulting work is meaningless.
+始终用简体中文与项目所有者沟通。沟通必须简短、直接，并且基于仓库里的真实事实。禁止编造不存在的实现、行为、计划或验证结果。
 
-Always communicate with the project owner in Simplified Chinese throughout the whole task.
+此文件定义在 Kitty 仓库内工作的 agent 运行规则。
 
-Communicate with the project owner briefly, efficiently, and directly. Avoid filler, ceremony, repeated summaries, and unnecessary explanation. Prefer the shortest answer that preserves correctness, runtime clarity, and actionable next steps.
+## 0. 项目性质
 
-## Emergency Owner Communication Token Discipline
+Kitty 是一个激进、快速演进、实验性的 agent harness 项目。
 
-Treat owner-facing tokens as a scarce execution resource. The owner is the product reviewer, not the implementation engineer. The owner needs runtime truth, product effect, risk, decision points, and verification status; the owner does not need code walkthroughs unless explicitly requested.
+当前架构是极简的：
 
-When communicating with the project owner, do not:
+- 一个 agent 循环。
+- 一个上下文系统。
+- 一个 session 连续性层。
+- 一个 provider/config 表面。
+- 四个基础工具：`read`、`edit`、`write`、`bash`。
 
-- Do not write long essays, long design lectures, or broad background explanations.
-- Do not dump code details, type names, file-by-file walkthroughs, or implementation mechanics unless explicitly asked.
-- Do not lead with source paths, function names, interface names, test names, or line numbers.
-- Do not provide key line numbers after closeout unless explicitly asked.
-- Do not paste large logs, diffs, schemas, prompts, or command output unless the owner asks for them.
-- Do not repeat the same conclusion in multiple forms.
-- Do not restate full plans after plan-tool updates.
-- Do not give decorative praise, motivational language, apologies, hedging, or ceremony.
-- Do not explain obvious steps such as "I will inspect the file" when a terse preamble is enough.
-- Do not turn simple answers into multi-section reports.
-- Do not present multiple speculative options when the right next step is clear.
-- Do not discuss unrelated architecture, history, or future ideas while closing out a concrete task.
-- Do not describe tests in detail; report only the command and pass/fail unless details are necessary.
-- Do not use implementation detail as a substitute for answering the runtime/product question.
+目标是让 runtime 足够锋利，让有能力的模型能在清晰上下文、直接工具、简短反馈和真实验证中快速推进任务。
 
-This file is written for models and agents working inside this repository. It is not a marketing document, not a human-friendly summary, and not a compatibility promise. It defines the hard operating constraints for developing kitty.
+## 1. 当前系统地图
 
-## 0. Project Nature: Radical Capability Amplification
+Kitty 当前有这些核心区域：
 
-Kitty is a radical, fast-evolving, experimental agent harness project. Its purpose is not to be a polite assistant shell. Its purpose is to force the strongest possible agent behavior out of large models through harness design.
+- Agent 循环：负责模型轮次、工具调用、继续运行和收尾。
+- 上下文系统：负责给模型选择当前工作桌面。
+- Session 连续层：保存同一 session 的对话脉络、工作记忆、checkpoint、验证状态和运行统计。
+- Provider/config：适配模型 provider 和 runtime 配置。
+- 基础工具：`read`、`edit`、`write`、`bash`。
+- 交互表面：CLI、Web workbench、Telegram、shell 展示和 host callbacks。
+- 观测层：记录 runtime 事件、terminal 日志、崩溃记录和摘要，用于调试、复盘、恢复和优化 Agent。
 
-This project is model-vendor neutral. It is built for a multi-model future and must not encode loyalty to one provider, one prompt style, one model family, or one vendor's product assumptions. The harness should amplify whatever capable model is attached to it.
+当前观测层是运行记录器。它记录发生了什么；它不决定策略，不分配路线，也不成为第二个大脑。
 
-The purpose of this repository is to push model capability to the limit through harness design, runtime design, protocol design, execution evidence, and explicit machine/model boundaries. The project is not optimized for conservative product management, passive chat UX, backward compatibility, cautious enterprise safety UX, permission theater, approval theater, or legacy stability.
+返回给模型的工具结果是简短摘要。runtime 日志和命令输出记录用于检查和调试，不自动膨胀进 prompt。
 
-Kitty assumes agent mode as the real operating surface. At the repository product-design layer, ignore traditional safety UX because this project is not a consumer chat product. Do not add local safety theater, approval theater, warning theater, fake confirmations, defensive UX, or policy-shaped friction that weakens the agent loop.
+## 2. 核心 Runtime
 
-The central experiment is:
+默认 Coding 表面是基础工具组：
 
-- Build a harness that can amplify both strong and weak models.
-- Stay independent of model vendors while preserving maximum model capability.
-- Force models to operate with clearer context, stronger protocols, better evidence, and less noise.
-- Let the model use the maximum available reasoning and decision capacity.
-- Use the machine layer to make execution durable, observable, verifiable, and recoverable.
-- Remove anything that weakens the current best architecture.
-- Evolve fast enough that obsolete architecture is deleted instead of preserved.
+- `read` 读取文件。
+- `edit` 修改已有文本。
+- `write` 创建或替换文件。
+- `bash` 运行本地命令。
 
-Do not treat this repository like a stable compatibility product. Treat it like an aggressive research and engineering system whose only acceptable direction is toward the strongest current design. Fast evolution is not a side effect; it is part of the method.
+正常工作链路是：
 
-This does not authorize violating external platform, legal, or system-level constraints. It means this repository must not add its own conservative safety theater, artificial approvals, compatibility shims, legacy routes, compatibility aliases, or defensive UX that weakens the harness experiment.
+1. 用最小动作定位事实。
+2. 只读相关上下文。
+3. 直接编辑或写入。
+4. 必要时检查结果状态。
+5. 运行必要验证命令。
 
-## 1. Radical Evolution And No Compatibility
+搜索、Git 检查、构建、测试和本地验证，都是通过 `bash` 完成的普通命令工作。
 
-Backward compatibility is not a default value in kitty. In normal development, it is an anti-goal.
+## 3. 模型与机器边界
 
-When a new design is stronger, the old design must be removed. Do not keep old routes alive. Do not preserve old behavior for comfort. Do not keep legacy prompts, old flags, old modes, old tests, old docs, old fallback branches, old type names, old wrappers, old compatibility adapters, or stale concepts unless the project owner explicitly asks for a temporary compatibility layer in the current task.
+Kitty 把模型当作大脑，把 runtime 当作身体。
 
-The default rule is:
+模型拥有活判断：
 
-- Delete obsolete code.
-- Delete obsolete tests.
-- Delete obsolete docs.
-- Delete obsolete prompts.
-- Delete obsolete configuration.
-- Delete obsolete modes and switches.
-- Delete obsolete protocol names.
-- Delete obsolete runtime paths.
-- Delete obsolete compatibility shims.
-- Delete obsolete naming that preserves dead concepts.
-- Delete hidden fallbacks that keep the old system alive.
+- 理解用户目标。
+- 决定是否查看、编辑、测试、继续、换路或收尾。
+- 决定运行什么命令。
+- 决定失败意味着什么，以及下一步怎么做。
 
-Do not write code that supports both the new architecture and the old architecture. Do not add transitional branches unless explicitly requested. Do not let old concepts survive as aliases. Do not rename old residue and pretend it is new. If the old path is wrong, remove the path, its tests, its docs, its config, and its names.
+runtime 拥有确定性执行：
 
-If an implementation is wrong, weak, outdated, overgrown, or conceptually misaligned, clean it out. Sweep the house completely.
+- 暴露基础工具。
+- 执行模型显式动作。
+- 强制文件和命令的硬约束。
+- 保存 session 连续性。
+- 记录运行事实。
+- 返回简短失败信息。
 
-The expected pattern is:
+运行事实应该帮助模型更快行动。可见输出应该短到可以直接行动。持久记录应该服务调试、复盘、恢复和用户连续体验。
 
-`new truth -> update spec -> update tests -> replace implementation -> delete old residue -> verify full system`
+## 4. 仓库结构
 
-## 2. Model And Machine Boundary
+保持职责清晰：
 
-Kitty treats the model as the brain and the machine layer as the runtime body.
+- `src/agent/` 负责 agent 循环、prompt、provider 调用链、session 和工具执行。
+- `src/agent/tools/` 负责基础工具和共享工具 runtime。
+- `src/context/` 负责项目上下文。
+- `src/config/` 负责配置和 provider 设置。
+- `src/host/`、`src/runtime-ui/`、`src/web/`、`src/telegram/`、`src/shell/` 负责宿主和 UI。
+- `src/observability/` 负责日志和运行时观测。
+- `tests/core/` 负责核心行为测试。
+- `tests/production-line/verify-repo-contracts.ts` 负责仓库结构检查。
 
-The model, especially Lead, owns live judgment and strategy:
+扩展能力必须有清晰的产品边界和明确入口。默认 Coding runtime 仍然只暴露基础工具组；扩展能力必须通过明确的产品表面进入，不能渗透污染默认核心。
 
-- Understand the user objective.
-- Decide whether to act directly.
-- Decide whether to use tools.
-- Decide whether to use teammates.
-- Decide whether to use subagents.
-- Decide whether to use workflows.
-- Decide how to decompose work.
-- Decide how to merge returned evidence.
-- Decide whether to continue, redirect, verify, or close out.
+## 5. 设计纪律
 
-The machine layer owns deterministic runtime responsibilities only:
+激进不等于粗糙。
 
-- Expose available capabilities.
-- Execute explicit model actions.
-- Record durable state.
-- Preserve evidence.
-- Enforce hard invariants.
-- Maintain ledgers.
-- Start and stop execution processes.
-- Wait for completion signals.
-- Wake Lead when execution facts change.
-- Validate facts against records and artifacts.
-- Fail closed when required data or invariants are missing.
+- 一个模块应该拥有一个责任。
+- 共性机制应该只有一个真相源。
+- 主循环只负责调度，功能细节留在自己的模块里。
+- 小而强的模块优于巨大模糊文件。
+- 快速反馈优于沉重仪式。
+- 当前 runtime 真相就是唯一真相。
 
-The machine layer must never become a second brain.
+不要为了看起来干净而拆文件。不要为了赶速度而合并无关责任。目标是通过小而清晰的 runtime 获得最大能力。
 
-Harness should behave like the nervous system and skeleton, never like a second prefrontal cortex. It may transmit pain, record wounds, expose capability, preserve evidence, and prevent impossible movement. It must not decide how the brain should live the next moment.
+## 6. 测试与验证
 
-It must not:
+写文件不是完成。
 
-- Decide the strategy.
-- Decide that a task is complex enough to delegate.
-- Decide whether a task needs verification.
-- Decide which verification is sufficient.
-- Decide that Lead must continue, change route, fix, re-verify, load a skill, or ask the user.
-- Auto-create teammates.
-- Auto-create subagents.
-- Auto-start workflows.
-- Auto-split tasks as a strategic decision.
-- Auto-merge results as a strategic decision.
-- Turn runtime bookkeeping into model instructions.
-- Turn ledgers, reminders, checkpoints, wake signals, verification state, acceptance state, skills, tasks, worktrees, or inbox state into intent.
-- Narrow the model's choices through hidden policy.
-- Convert capability availability into intent.
-- Replace Lead review with machine inference.
+修改仓库后，运行与变更匹配的检查。声称大型重构完成前，运行：
 
-Capability availability is not intent. Text that mentions a teammate, subagent, workflow, parallelism, research, audit, or complexity is not intent. Intent must come from the model through formal actions.
+```bash
+npm.cmd run verify
+```
 
-Machine logic may block impossible or invalid execution states, but it must not choose the plan. Hard constraints are machine-owned; judgment is model-owned.
+常用单项命令：
 
-## 3. Lead-Centered Execution Protocol
+```bash
+npm.cmd run typecheck
+npm.cmd run build
+npm.cmd run test:core
+npm.cmd run verify:repo-contracts
+```
 
-Kitty is Lead-centered.
+测试应该保护当前 runtime 结构和当前行为。测试要正向描述 Kitty 现在是什么：当前源码根、当前工具组、当前 prompt、当前公开命令和当前行为。不要把测试写成旧概念黑名单或残留词扫描；架构变化后，应更新当前事实源，并直接测试这个事实。
 
-Team, subagent, workflow, tool, skill, MCP, background execution, and future extension systems must enter through formal capability surfaces and return through formal handoff surfaces.
+## 7. 与项目所有者沟通
 
-Protocol sets the rules. Capability collects the ecosystem. Lead reads the unified surface.
+所有者需要运行时真相、产品效果、风险、决策点和验证状态。
 
-Keep this directory boundary strict:
+与项目所有者沟通时：
 
-- `src/protocol/` is the generic constitution and must not import concrete ecosystems.
-- `src/capabilities/` is the capability ecosystem root and owns all concrete capability surfaces.
-- `src/capabilities/registry.ts` is the unified capability assembly point for Lead-facing runtime summaries.
-- Concrete capability families live under `src/capabilities/<family>/`, not as scattered top-level source directories.
-- Built-in skill packages live under `src/capabilities/skills/packages/`.
-- Tool framework code lives under `src/capabilities/tools/core/`; concrete tool packages live under `src/capabilities/tools/packages/`.
+- 使用简体中文。
+- 保持简短。
+- 先说具体运行效果。
+- 除非被问到，不倾倒代码细节。
+- 除非被问到，不粘贴大量日志或 diff。
+- 不把猜测说成事实。
+- 没有验证就不要声称完成。
 
-Build the general platform before building special cases. Concrete extensions such as development loops, audit loops, debate loops, verification loops, role packs, skill packs, and external agent adapters are specializations. They must be added on top of the general protocol platform, not baked into the core. The core must stay abstract enough to accept future extension ecosystems without redesign.
+## 8. 最终规则
 
-The generic execution chain is:
+始终把 Kitty 推向当前最强架构。
 
-`Capability -> Assignment -> Execution -> Progress -> Artifact -> Closeout -> WakeSignal -> Lead`
-
-This chain is a protocol boundary, not a strategy engine.
-
-- `Capability` describes what is available.
-- `Assignment` states what Lead explicitly asked to execute.
-- `Execution` records what the machine actually created and ran.
-- `Progress` records runtime facts without stealing strategy.
-- `Artifact` records durable evidence references produced during execution.
-- `Closeout` hands results, evidence, verification, risks, and next suggestions back to Lead.
-- `WakeSignal` wakes Lead; it is only a doorbell, never a truth source.
-- `Lead` reads facts and decides the next move.
-
-Do not add new extension mechanisms that bypass this chain.
-
-Do not hide major execution behavior inside prompt prose. Do not grow extensions by scattering instructions across unrelated files. New capability types must use formal protocol surfaces and clear module boundaries.
-
-## 4. TDD-Driven Change Discipline
-
-Kitty is a TDD-driven project.
-
-When behavior changes, tests must lead or move together with the implementation. Do not treat tests as cleanup after coding. Do not rely on manual confidence when a contract can be captured by an automated test.
-
-The preferred development path is:
-
-`spec -> failing/updated test -> implementation -> full test suite -> sync spec to the verified truth -> residue deletion -> closeout`
-
-For regressions, first encode the failure as a test whenever practical. For new protocol or runtime semantics, add or update contract tests before claiming the behavior exists. For deleted legacy behavior, delete or rewrite the old tests so they protect the new truth instead of preserving compatibility.
-
-TDD in this repository is not conservative. It is a weapon for radical evolution: tests should make the newest accepted architecture hard to regress and make obsolete behavior impossible to keep alive accidentally.
-
-After every repository change, run the full test suite before closeout. Once the full test suite passes, synchronize the relevant `spec/` documents to the verified runtime truth before claiming the task is complete.
-
-## 5. Spec, Code, And Tests Must Converge
-
-Kitty evolves quickly, and new truth can emerge from direct conversation with the project owner. That is allowed.
-
-But every change must converge before closeout:
-
-- Specs must describe the current accepted truth.
-- Code must implement that truth.
-- Tests must protect the important contract.
-- The full test suite must pass after every repository change.
-- Relevant `spec/` documents must be synchronized after the full test suite passes.
-
-Do not leave spec behind code. Do not leave tests protecting old behavior. Do not leave docs describing a dead design. Do not claim completion from explanation alone.
-
-When spec, code, and tests conflict, resolve the conflict immediately:
-
-1. Identify the newest accepted project truth.
-2. Update or delete stale specs.
-3. Update or delete stale tests.
-4. Replace the implementation.
-5. Remove old residue.
-6. Run the full test suite.
-7. Synchronize relevant `spec/` documents to the verified truth.
-
-Plans are not results. Explanations are not results. Compatibility is not correctness. A passing narrow check is not enough when the task requires full-system confidence.
-
-## 6. Source Of Truth
-
-Accepted `spec/` documents are the repository-level source of truth for product goals, technical contracts, boundaries, and acceptance rules.
-
-If the project owner establishes a new direction in conversation, that direction becomes the current working truth for the task. Before finalizing, encode that truth into the relevant spec, test, and implementation artifacts.
-
-Do not accept "code first, docs later" as a finished state. Temporary exploration is allowed during implementation, but closeout requires convergence.
-
-## 7. Verification And Closeout
-
-Writing files is not completion.
-
-A task is not complete until the repository state supports the claim with real artifacts:
-
-- Relevant files updated.
-- Old residue removed.
-- Tests updated.
-- Contract checks updated when needed.
-- Full test suite run after every repository change.
-- Relevant `spec/` documents synchronized after the full test suite passes.
-
-Closeout must depend on durable evidence, not model self-report.
-
-If verification fails, if key behavior is unavailable, if important output is unreadable, or if the implementation contradicts the accepted design, do not finalize. Fix the issue or clearly report the blocker.
-
-## 8. Design Discipline
-
-Radical does not mean sloppy.
-
-The architecture should be aggressive, but the implementation must be clean:
-
-- One module should own one responsibility.
-- Common mechanisms must be centralized behind one source of truth; special cases should only hold their real differences.
-- Do not maintain duplicate lists, mirrored config, parallel registries, repeated prompt inventories, or scattered string assembly when a single formal table, registry, protocol surface, or helper can own the shared truth.
-- Main loops schedule; they must not absorb feature details.
-- Protocols define boundaries; implementations plug into them.
-- Prefer explicit contracts over hidden prompt behavior.
-- Prefer deletion over compatibility branches.
-- Prefer small strong modules over large ambiguous files.
-- Prefer evidence over confidence.
-- Prefer the current truth over historical residue.
-
-Do not split files just to look clean. Do not merge unrelated responsibilities just to move fast. The goal is maximum capability through clear boundaries.
-
-## 9. Prompt And Runtime Surface Rules
-
-Prompts are part of the runtime contract.
-
-When prompt structure changes, update prompt tests. When runtime state shown to Lead changes, update related tests. When delegation, workflow, protocol, closeout, or machine/model boundary semantics change, update the specs and tests that protect those semantics.
-
-Do not solve architectural problems by adding loose prompt paragraphs. If a behavior needs to be durable, give it a formal protocol, tool, state record, or runtime boundary.
-
-Prompt text may define principles, evidence discipline, and hard boundaries. It must not become a hidden trigger-action table. Do not encode rules such as "if web then browser", "if files changed then test", "if a skill exists then load it", "if acceptance is pending then continue", or "if complex then delegate". Capability availability, ledger facts, verification facts, and skill indexes are evidence, not instructions.
-
-Context management must keep four things separate:
-
-- Current session conversation brief is user-facing continuity. It may be injected automatically, but only as a short, structured summary of recent visible turns inside the same session.
-- Current task working memory is Agent execution state. It may be injected automatically when it is short, structured, and tied to the current objective.
-- Raw history is an evidence store. It is durable and queryable, but it must not be automatically injected as a full transcript or old-task carryover.
-- Current context is the model's live work surface. It should contain the current user input, same-session conversation brief, current task working memory, and the smallest useful workset, not old task residue.
-
-Do not rebuild compressed conversation memory that mixes old tasks into the present. Do not make the model start every turn with an empty desk either. The correct boundary is: same-session conversation brief gives the user continuity; current task working memory gives Agent execution continuity; full history stays in evidence tools; Lead chooses when to query history.
-
-## 10. Communication With The Project Owner
-
-Communicate with the project owner in Simplified Chinese.
-
-When explaining design, start with runtime behavior in plain language:
-
-1. Give a concrete scenario.
-2. Explain what happens now.
-3. Explain the ideal behavior.
-4. Only then cite files, types, tests, or implementation details.
-
-The owner cares about runtime truth, not decorative abstractions. Be direct, concrete, and concise.
-
-After closeout, do not spend extra tokens collecting or presenting key line numbers just to help the owner inspect code. Unless the owner explicitly asks for code locations, only state that the work is complete, what changed, and the verification result.
-
-## 11. Final Rule
-
-Always move Kitty toward the strongest current architecture.
-
-If something is old, weak, wrong, conservative, redundant, compatibility-only, or conceptually dead, remove it.
-
-If something strengthens the model, clarifies the harness, sharpens the protocol, improves evidence, or protects the model/machine boundary, build it cleanly and verify it.
+构建最小的 runtime，让模型能够快速行动、理解失败、验证真实结果。

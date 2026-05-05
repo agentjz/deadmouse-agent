@@ -1,6 +1,5 @@
 import type { InteractionTurnDisplay } from "../../interaction/shell.js";
-import { createWaitingSpinner, wrapCallbacksWithSpinnerStop } from "../../ui/spinner.js";
-import { followExecutionForegroundStream } from "../../runtime-ui/executionForeground.js";
+import { createWaitingSpinner, wrapCallbacksWithSpinnerStop } from "./spinner.js";
 import { createRuntimeUiAgentCallbacks } from "../../runtime-ui/agentCallbacks.js";
 
 export function createCliTurnDisplay(options: {
@@ -31,15 +30,6 @@ export function createCliTurnDisplay(options: {
   callbacks.onModelWaitStop = () => {
     waitingSpinner.stop();
   };
-  callbacks.onExecutionForegroundStream = async (event) => {
-    waitingSpinner.stop();
-    runtimeUi.flush();
-    await followExecutionForegroundStream({
-      ...event,
-      abortSignal: options.abortSignal,
-    });
-  };
-
   return {
     callbacks,
     flush() {

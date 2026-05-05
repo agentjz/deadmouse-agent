@@ -1,4 +1,4 @@
-﻿import path from "node:path";
+import path from "node:path";
 
 export function normalizeDisplayPath(value: string | undefined, cwd?: string): string | undefined {
   if (!value) {

@@ -3,14 +3,9 @@ import type { AgentIdentity } from "../types.js";
 export function buildInternalWakeInput(
   identity: AgentIdentity | undefined,
 ): string {
-  const subject =
-    identity?.kind === "teammate"
-      ? "teammate runtime"
-      : identity?.kind === "subagent"
-        ? "subagent runtime"
-        : "lead runtime";
+  void identity;
   const lines = [
-    `[internal] Wake ${subject}; runtime state changed. This is not a user objective.`,
+    "[internal] Wake lead runtime; runtime state changed. This is not a user objective.",
     "Keep the latest real user input as the current objective.",
   ];
 

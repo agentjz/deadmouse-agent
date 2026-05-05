@@ -1,4 +1,4 @@
-import { shouldYieldTurn } from "../runtimeState.js";
+import { shouldYieldTurn } from "../turn/runtimeState.js";
 import type { ContextRuntimeToolProgress } from "./types.js";
 
 export interface BuildContextRuntimeToolProgressInput {

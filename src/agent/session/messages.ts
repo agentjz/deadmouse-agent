@@ -1,7 +1,7 @@
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
-import { resolveProviderCapabilities } from "../provider.js";
-import type { ExternalizedToolResultReference, StoredMessage, ToolCallRecord } from "../../types.js";
+import { resolveProviderCapabilities } from "../provider/index.js";
+import type { StoredMessage, ToolCallRecord } from "../../types.js";
 
 export function buildChatMessages(
   systemPrompt: string,
@@ -47,16 +47,12 @@ export function createToolMessage(
   toolCallId: string,
   content: string,
   name: string,
-  options: {
-    externalizedToolResult?: ExternalizedToolResultReference;
-  } = {},
 ): StoredMessage {
   return {
     role: "tool",
     content,
     tool_call_id: toolCallId,
     name,
-    externalizedToolResult: options.externalizedToolResult,
     createdAt: new Date().toISOString(),
   };
 }

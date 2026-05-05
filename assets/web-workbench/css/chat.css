@@ -195,14 +195,6 @@
   color: var(--lead);
 }
 
-.runtime-line.dream .runtime-label,
-.runtime-line.subagent .runtime-label,
-.runtime-line.team .runtime-label,
-.runtime-line.background .runtime-label,
-.runtime-line.workflow .runtime-label {
-  color: #5f6673;
-}
-
 .runtime-line.tool .runtime-label,
 .runtime-line.result .runtime-label {
   color: #0f766e;

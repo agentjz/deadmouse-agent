@@ -1,6 +1,6 @@
 import { tryParseJson } from "../../utils/json.js";
 import { normalizeDisplayPath, rewriteAbsolutePaths } from "../pathDisplay.js";
-import { truncateBlock } from "../previewPolicy.js";
+import { truncateBlock, truncateVisiblePreview } from "../previewPolicy.js";
 import { readStringField } from "./shared.js";
 import type { ToolDisplay } from "./types.js";
 
@@ -17,7 +17,7 @@ export function buildToolResultDisplay(name: string, rawOutput: string, cwd?: st
 
   const output = parsed as Record<string, unknown>;
   const ok = readResultOk(output);
-  const tracked = output.externalized === true || typeof output.storagePath === "string" || typeof output.outputPath === "string";
+  const tracked = typeof output.outputPath === "string";
   if (name === "task") {
     const description = readStringField(output, "description");
     const agentType = readStringField(output, "agentType");
@@ -45,6 +45,24 @@ export function buildToolResultDisplay(name: string, rawOutput: string, cwd?: st
     ok,
     tracked,
   };
+}
+
+export function buildToolResultVisiblePreview(name: string, rawOutput: string, cwd?: string): string | null {
+  const display = buildToolResultDisplay(name, rawOutput, cwd);
+  const preview = display.preview ?? display.summary ?? rawOutput;
+  const visible = truncateVisiblePreview(preview);
+  return visible || null;
+}
+
+export function buildToolFailureDetail(name: string, rawOutput: string, cwd?: string): string {
+  const display = buildToolResultDisplay(name, rawOutput, cwd);
+  const parsed = parseJsonObject(display.preview ?? rawOutput);
+  const error = readString(parsed?.error) ?? readString(parsed?.reason) ?? readString(parsed?.hint);
+  if (error) {
+    return truncateVisiblePreview(error);
+  }
+
+  return truncateVisiblePreview(display.preview ?? rawOutput).replace(/[{}"]/g, "");
 }
 
 function readResultOk(payload: Record<string, unknown>): boolean {
@@ -86,4 +104,22 @@ function formatFallbackObjectPreview(value: Record<string, unknown>, cwd?: strin
     .filter((line): line is string => Boolean(line));
 
   return fragments.length > 0 ? fragments.join("\n") : undefined;
+}
+
+function parseJsonObject(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
 }

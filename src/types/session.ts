@@ -19,7 +19,6 @@ export interface StoredMessage {
   tool_call_id?: string;
   tool_calls?: ToolCallRecord[];
   reasoningContent?: string;
-  externalizedToolResult?: ExternalizedToolResultReference;
   createdAt: string;
 }
 
@@ -31,7 +30,6 @@ export interface SessionRecord {
   title?: string;
   messageCount: number;
   messages: StoredMessage[];
-  todoItems?: TodoItem[];
   taskState?: TaskState;
   checkpoint?: SessionCheckpoint;
   verificationState?: VerificationState;
@@ -74,10 +72,6 @@ export interface SessionRuntimeStats {
     recoveryCount: number;
     compressionCount: number;
   };
-  externalizedToolResults: {
-    count: number;
-    byteLengthTotal: number;
-  };
   updatedAt: string;
 }
 
@@ -102,26 +96,10 @@ export interface SessionDiffState {
 export type SessionCheckpointStatus = "active" | "completed";
 export type SessionCheckpointPhase = "active" | "continuation" | "resume" | "recovery";
 
-export type SessionCheckpointArtifactKind =
-  | "externalized_tool_result"
-  | "tool_preview";
-
-export interface SessionCheckpointArtifact {
-  kind: SessionCheckpointArtifactKind;
-  label: string;
-  toolName?: string;
-  path?: string;
-  storagePath?: string;
-  preview?: string;
-  summary?: string;
-  sha256?: string;
-}
-
 export interface SessionCheckpointToolBatch {
   tools: string[];
   summary: string;
   changedPaths: string[];
-  artifacts: SessionCheckpointArtifact[];
   recordedAt: string;
 }
 
@@ -171,25 +149,7 @@ export interface SessionCheckpoint {
   completedSteps: string[];
   recentToolBatch?: SessionCheckpointToolBatch;
   flow: SessionCheckpointFlow;
-  evidenceArtifacts: SessionCheckpointArtifact[];
   updatedAt: string;
-}
-
-export interface ExternalizedToolResultReference {
-  scope: "project_state_root";
-  storagePath: string;
-  byteLength: number;
-  charLength: number;
-  preview: string;
-  sha256: string;
-}
-
-export type TodoStatus = "pending" | "in_progress" | "completed";
-
-export interface TodoItem {
-  id: string;
-  text: string;
-  status: TodoStatus;
 }
 
 export interface TaskState {

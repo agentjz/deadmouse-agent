@@ -1,15 +1,10 @@
 export type {
-  LoadedSkill,
-  SkillRuntimeState,
-} from "./capabilities/skills/types.js";
-export type {
   AcceptanceCommandRequirement,
   AcceptanceContract,
   AcceptanceContractKind,
   AcceptanceFileFormat,
   AcceptanceFileRequirement,
   AcceptanceFileRole,
-  AcceptanceHttpRequirement,
   AcceptanceState,
   AcceptanceStatus,
 } from "./types/acceptance.js";
@@ -21,7 +16,6 @@ export type {
   AppConfig,
   AppPaths,
   CliOverrides,
-  MineruRuntimeConfig,
   ModelReasoningEffort,
   ModelThinkingMode,
   RuntimeConfig,
@@ -38,11 +32,8 @@ export type {
 } from "./types/project.js";
 export type {
   CompactionRecoveryState,
-  ExternalizedToolResultReference,
   PendingToolCall,
   SessionCheckpoint,
-  SessionCheckpointArtifact,
-  SessionCheckpointArtifactKind,
   SessionCheckpointFlow,
   SessionCheckpointPhase,
   SessionCheckpointStatus,
@@ -58,8 +49,6 @@ export type {
   SessionRuntimeUsageStats,
   StoredMessage,
   TaskState,
-  TodoItem,
-  TodoStatus,
   ToolCallRecord,
   VerificationState,
   VerificationStatus,
@@ -85,17 +74,11 @@ export type {
   RuntimeTerminalTransition,
   RuntimeTransition,
   RuntimeYieldReason,
-  RuntimeYieldExecutionDispatchReason,
   RuntimeYieldToolStepLimitReason,
   RuntimeYieldTransition,
 } from "./types/runtimeTransitions.js";
 export type {
-  ToolExecutionCollaborationMetadata,
   ToolExecutionMetadata,
-  ToolExecutionProcessEvent,
-  ToolExecutionProcessLane,
-  ToolExecutionProcessMetadata,
-  ToolExecutionProcessState,
   ToolExecutionProtocolMetadata,
   ToolExecutionProtocolPhase,
   ToolExecutionProtocolPolicy,

@@ -1,5 +1,3 @@
-import { formatSkillPromptBlock } from "../../capabilities/skills/prompt.js";
-import { formatPromptBlock } from "../prompt/format.js";
 import { buildFieldBlock, formatLimitedList } from "../prompt/structured.js";
 import type { RuntimeFactsProfileInput } from "./types.js";
 
@@ -15,24 +13,8 @@ export function buildRuntimeEnvironmentBlock(input: RuntimeFactsProfileInput): s
 }
 
 export function buildCapabilityBlock(input: RuntimeFactsProfileInput): string | undefined {
-  if (input.runtimeState.identity?.kind === "subagent") {
-    return undefined;
-  }
-
-  return input.runtimeState.capabilityPresentation
-    ? formatPromptBlock("Capability presentation layer", input.runtimeState.capabilityPresentation)
-    : undefined;
-}
-
-export function buildSkillBlock(input: RuntimeFactsProfileInput): string | undefined {
-  const content = formatSkillPromptBlock(input.projectContext.skills, input.skillRuntimeState).trim();
-  if (!content || content === "- No project skills discovered.") {
-    return input.projectContext.skills.length > 0
-      ? formatPromptBlock("Skill runtime hints", content)
-      : undefined;
-  }
-
-  return formatPromptBlock("Skill runtime hints", content);
+  void input;
+  return undefined;
 }
 
 export { formatLimitedList };

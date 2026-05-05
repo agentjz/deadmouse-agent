@@ -1,4 +1,3 @@
-﻿import { getDefaultMcpConfig, normalizeMcpConfig } from "../capabilities/mcp/config.js";
 import {
   DEFAULT_TELEGRAM_CONFIG,
   normalizeTelegramConfig,
@@ -25,13 +24,10 @@ const DEFAULT_CONFIG: AppConfig = {
   managedTurnMaxElapsedMs: 180_000,
   maxReadBytes: 120_000,
   maxSearchResults: 80,
-  maxSpreadsheetPreviewRows: 20,
-  maxSpreadsheetPreviewColumns: 12,
   commandStallTimeoutMs: 30_000,
   commandMaxRetries: 1,
   commandRetryBackoffMs: 1_500,
   showReasoning: true,
-  mcp: getDefaultMcpConfig(),
   telegram: DEFAULT_TELEGRAM_CONFIG,
 };
 
@@ -103,18 +99,6 @@ export function normalizeConfig(
     ),
     maxReadBytes: clampNumber(config.maxReadBytes, 2_000, 500_000, DEFAULT_CONFIG.maxReadBytes),
     maxSearchResults: clampNumber(config.maxSearchResults, 10, 500, DEFAULT_CONFIG.maxSearchResults),
-    maxSpreadsheetPreviewRows: clampNumber(
-      config.maxSpreadsheetPreviewRows,
-      1,
-      200,
-      DEFAULT_CONFIG.maxSpreadsheetPreviewRows,
-    ),
-    maxSpreadsheetPreviewColumns: clampNumber(
-      config.maxSpreadsheetPreviewColumns,
-      1,
-      100,
-      DEFAULT_CONFIG.maxSpreadsheetPreviewColumns,
-    ),
     commandStallTimeoutMs: clampNumber(config.commandStallTimeoutMs, 2_000, 300_000, DEFAULT_CONFIG.commandStallTimeoutMs),
     commandMaxRetries: clampNumber(config.commandMaxRetries, 0, 3, DEFAULT_CONFIG.commandMaxRetries),
     commandRetryBackoffMs: clampNumber(
@@ -124,7 +108,6 @@ export function normalizeConfig(
       DEFAULT_CONFIG.commandRetryBackoffMs,
     ),
     showReasoning: Boolean(config.showReasoning),
-    mcp: normalizeMcpConfig(config.mcp, runtime),
     telegram: normalizeTelegramConfig(config.telegram),
   };
 }
@@ -164,10 +147,6 @@ export function mergeAppConfig(base: AppConfig, patch: Partial<AppConfig>): AppC
     ...base,
     ...patch,
     schemaVersion: CURRENT_CONFIG_SCHEMA_VERSION,
-    mcp: {
-      ...base.mcp,
-      ...(patch.mcp ?? {}),
-    },
     telegram: {
       ...base.telegram,
       ...(patch.telegram ?? {}),

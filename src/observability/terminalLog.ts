@@ -164,9 +164,6 @@ function mirrorTurnDisplay(display: InteractionTurnDisplay, writer: TerminalLogW
           toolName: name,
         })));
       },
-      onExecutionForegroundStream(event) {
-        return display.callbacks.onExecutionForegroundStream?.(event);
-      },
     },
     flush() {
       display.flush();

@@ -25,21 +25,13 @@ export function evaluateCommandChecks(contract: AcceptanceContract, messages: St
 function hasSuccessfulCommand(messages: StoredMessage[], commandContains: string): boolean {
   const needle = commandContains.toLowerCase();
   return messages.some((message) => {
-    if (message.role !== "tool" || !message.content || (message.name !== "bash" && message.name !== "background_check")) {
+    if (message.role !== "tool" || !message.content || message.name !== "bash") {
       return false;
     }
 
     const payload = tryParseRecord(message.content);
     if (!payload) {
       return false;
-    }
-
-    if (message.name === "background_check" && payload.job && typeof payload.job === "object") {
-      const job = payload.job as Record<string, unknown>;
-      const command = String(job.command ?? "").toLowerCase();
-      const status = String(job.status ?? "").toLowerCase();
-      const exitCode = typeof job.exitCode === "number" ? job.exitCode : null;
-      return command.includes(needle) && status === "completed" && exitCode === 0;
     }
 
     const command = String(payload.command ?? "").toLowerCase();

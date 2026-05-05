@@ -9,11 +9,7 @@ import { SessionStore } from "../agent/session.js";
 import { readUserInput } from "../agent/session/turnFrame.js";
 import { getErrorMessage } from "../agent/errors.js";
 import { createPersistedSession } from "../host/session.js";
-import { loadProjectContext } from "../context/projectContext.js";
 import { runHostTurn } from "../host/turn.js";
-import { loadSpecRuntime } from "../spec/runtime.js";
-import { SpecStore } from "../spec/store.js";
-import type { SpecRuntime } from "../spec/runtime.js";
 import type { RuntimeConfig, SessionRecord } from "../types.js";
 import { formatRuntimeUiRoleLabel } from "../runtime-ui/channelIdentity.js";
 import {
@@ -27,9 +23,9 @@ import {
 } from "./files.js";
 import { readGitDiff, readGitStatus, readGitSummary } from "./git.js";
 import { WorkbenchBroadcaster } from "./broadcaster.js";
-import { nowEventTime, type WorkbenchMode, type WorkbenchTodoItem } from "./events.js";
-import { WebWorkbenchLog } from "./observability.js";
-import { createRuntimeLineEvent, createToolCallRuntimeLineSummary, extractWorkbenchTodoItems, followWorkbenchForegroundStream, sendToolCallLine, sendToolErrorLine, sendToolResultLine } from "./runtimeDisplay.js";
+import { nowEventTime } from "./events.js";
+import { createRuntimeLineEvent, createToolCallRuntimeLineSummary, sendToolCallLine, sendToolErrorLine, sendToolResultLine } from "./runtimeDisplay.js";
+import { recordHostMessage } from "../observability/hostEvents.js";
 
 export interface StartWorkbenchServerOptions {
   cwd: string;
@@ -37,7 +33,6 @@ export interface StartWorkbenchServerOptions {
   host?: string;
   port?: number;
   staticDir?: string;
-  mode?: WorkbenchMode;
 }
 
 export interface WorkbenchServerHandle {
@@ -52,13 +47,10 @@ export async function startWorkbenchServer(options: StartWorkbenchServerOptions)
   const wsServer = new WebSocketServer({ server, path: "/ws" });
   const broadcaster = new WorkbenchBroadcaster(wsServer);
   const sessionStore = new SessionStore(options.config.paths.sessionsDir);
-  const mode = options.mode ?? "agent";
   let currentSession: SessionRecord = await createWorkbenchSession({
     cwd: options.cwd,
-    mode,
     sessionStore,
   });
-  let webLog = new WebWorkbenchLog(options.config.paths.dataDir, currentSession.id);
   let running = false;
   let activeAbortController: AbortController | undefined;
 
@@ -75,7 +67,6 @@ export async function startWorkbenchServer(options: StartWorkbenchServerOptions)
     void handleJson(response, async () => summarizeProject({
       rootCwd: options.cwd,
       config: options.config,
-      mode,
       session: await refreshCurrentSession(),
     }));
   });
@@ -193,8 +184,6 @@ export async function startWorkbenchServer(options: StartWorkbenchServerOptions)
       type: "project.updated",
       cwd: turnContext.cwd,
       projectName: path.basename(turnContext.cwd),
-      mode,
-      activeSpec: summarizeActiveSpec(turnContext.specRuntime),
       createdAt: nowEventTime(),
     });
 
@@ -207,9 +196,6 @@ export async function startWorkbenchServer(options: StartWorkbenchServerOptions)
       session: currentSession,
       sessionStore,
       abortSignal: activeAbortController.signal,
-      mode,
-      extraTools: turnContext.extraTools,
-      runtimePromptState: turnContext.runtimePromptState,
       callbacks: {
         onModelWaitStart: () => broadcaster.send({ type: "session.status", status: "running", message: "waiting for model", createdAt: nowEventTime() }),
         onModelWaitStop: () => broadcaster.send({ type: "session.status", status: "running", message: "streaming", createdAt: nowEventTime() }),
@@ -222,63 +208,31 @@ export async function startWorkbenchServer(options: StartWorkbenchServerOptions)
         },
         onReasoningDelta: (delta) => sendWorkbenchRuntimeLine({ channel: "lead", kind: "reasoning", message: delta }),
         onReasoning: (text) => sendWorkbenchRuntimeLine({ channel: "lead", kind: "reasoning", message: text }),
-        onDispatch: (event) => broadcaster.send({
-          type: "execution.started",
-          profile: event.profile,
-          actorName: event.actorName,
-          executionId: event.executionId,
-          summary: event.summary,
-          createdAt: nowEventTime(),
-        }),
-        onExecutionForegroundStream: (event) => {
-          broadcaster.send({
-            type: "execution.foreground",
-            executionId: event.executionId,
-            label: event.label,
-            streamPath: event.streamPath,
-            createdAt: nowEventTime(),
-          });
-          followWorkbenchForegroundStream({
-            broadcaster,
-            executionId: event.executionId,
-            label: event.label,
-            streamPath: event.streamPath,
-            abortSignal: activeAbortController?.signal,
-          });
-        },
         onToolCall: (name, args) => {
-          void webLog.write({ event: "tool.call", name, args });
+          recordWebWorkbenchEvent(options.config.paths.dataDir, currentSession.id, "tool.call", { name, args });
           sendToolCallLine({ broadcaster, name, args, cwd: turnContext.cwd });
           broadcaster.send({ type: "tool.call", name, args, createdAt: nowEventTime() });
         },
         onToolResult: (name, output) => {
-          void webLog.write({ event: "tool.result", name, output });
+          recordWebWorkbenchEvent(options.config.paths.dataDir, currentSession.id, "tool.result", { name, output });
           sendToolResultLine({ broadcaster, name, output, cwd: turnContext.cwd });
           broadcaster.send({ type: "tool.result", name, output, createdAt: nowEventTime() });
-          if (name === "todo_write") {
-            const items = readTodoItems(output);
-            if (items) {
-              broadcaster.send({ type: "todo.updated", items, createdAt: nowEventTime() });
-            }
-          }
         },
         onToolError: (name, error) => {
-          void webLog.write({ event: "tool.error", name, error });
+          recordWebWorkbenchEvent(options.config.paths.dataDir, currentSession.id, "tool.error", { name, error });
           sendToolErrorLine({ broadcaster, name, error, cwd: turnContext.cwd });
           broadcaster.send({ type: "tool.error", name, error, createdAt: nowEventTime() });
         },
         onStatus: (message) => {
-          void webLog.write({ event: "status", message });
+          recordWebWorkbenchEvent(options.config.paths.dataDir, currentSession.id, "status", { message });
           broadcaster.send({ type: "session.status", status: "running", message, createdAt: nowEventTime() });
         },
       },
     }).then(async (outcome) => {
       currentSession = await sessionStore.load(outcome.session.id).catch(() => outcome.session);
-      webLog = new WebWorkbenchLog(options.config.paths.dataDir, currentSession.id);
       running = false;
       activeAbortController = undefined;
       broadcaster.send({ type: "execution.finished", status: outcome.status, createdAt: nowEventTime() });
-      broadcaster.send({ type: "todo.updated", items: currentSession.todoItems ?? [], createdAt: nowEventTime() });
       if (!assistantDoneSent) {
         broadcaster.send({ type: "assistant.done", createdAt: nowEventTime() });
       }
@@ -288,8 +242,6 @@ export async function startWorkbenchServer(options: StartWorkbenchServerOptions)
         type: "project.updated",
         cwd: nextContext.cwd,
         projectName: path.basename(nextContext.cwd),
-        mode,
-        activeSpec: summarizeActiveSpec(nextContext.specRuntime),
         createdAt: nowEventTime(),
       });
       broadcaster.send({ type: "git.status", files: await readGitStatus(nextContext.cwd), createdAt: nowEventTime() });
@@ -334,7 +286,6 @@ export async function startWorkbenchServer(options: StartWorkbenchServerOptions)
   async function loadCurrentWorkbenchContext() {
     return loadWorkbenchTurnContext({
       rootCwd: options.cwd,
-      mode,
       session: currentSession,
     });
   }
@@ -358,57 +309,20 @@ export async function startWorkbenchServer(options: StartWorkbenchServerOptions)
 
 async function createWorkbenchSession(input: {
   cwd: string;
-  mode: WorkbenchMode;
   sessionStore: SessionStore;
 }): Promise<SessionRecord> {
-  const session = await createPersistedSession(input.sessionStore, input.cwd);
-  if (input.mode !== "spec") {
-    return session;
-  }
-
-  const projectContext = await loadProjectContext(input.cwd);
-  const store = new SpecStore(projectContext.stateRootDir, {
-    rootDir: projectContext.rootDir,
-  });
-  const latestSpec = (await store.list(1))[0];
-  if (latestSpec) {
-    await store.bindSession(session.id, latestSpec.id);
-  }
-  return session;
+  return createPersistedSession(input.sessionStore, input.cwd);
 }
 
 async function loadWorkbenchTurnContext(input: {
   rootCwd: string;
-  mode: WorkbenchMode;
   session: SessionRecord;
 }): Promise<{
   cwd: string;
   stateRootDir?: string;
-  extraTools?: SpecRuntime["tools"];
-  runtimePromptState?: {
-    mode: "spec";
-    extraStaticBlocks: string[];
-  };
-  specRuntime?: SpecRuntime;
 }> {
-  if (input.mode === "agent") {
-    return { cwd: input.rootCwd };
-  }
-
-  const specRuntime = await loadSpecRuntime({
-    cwd: input.rootCwd,
-    sessionId: input.session.id,
-  });
-  return {
-    cwd: specRuntime.cwd,
-    stateRootDir: specRuntime.stateRootDir,
-    extraTools: specRuntime.tools,
-    runtimePromptState: {
-      mode: "spec",
-      extraStaticBlocks: [specRuntime.promptBlock],
-    },
-    specRuntime,
-  };
+  void input.session;
+  return { cwd: input.rootCwd };
 }
 
 function resolvePackageRootAsset(packageName: string, assetPath: string): string {
@@ -439,7 +353,6 @@ function summarizeSession(session: SessionRecord) {
     cwd: session.cwd,
     messageCount: session.messageCount,
     updatedAt: session.updatedAt,
-    todos: session.todoItems ?? [],
     messages: session.messages.slice(-50).map((message) => ({
       role: message.role,
       label: message.role === "assistant" ? formatRuntimeUiRoleLabel("lead", "assistant") : undefined,
@@ -466,46 +379,20 @@ function summarizeSession(session: SessionRecord) {
 async function summarizeProject(input: {
   rootCwd: string;
   config: RuntimeConfig;
-  mode: WorkbenchMode;
   session: SessionRecord;
 }) {
   const turnContext = await loadWorkbenchTurnContext({
     rootCwd: input.rootCwd,
-    mode: input.mode,
     session: input.session,
   });
   return {
     cwd: turnContext.cwd,
     rootCwd: input.rootCwd,
     projectName: path.basename(turnContext.cwd),
-    mode: input.mode,
-    activeSpec: summarizeActiveSpec(turnContext.specRuntime),
     model: input.config.model,
     provider: input.config.provider,
     session: summarizeSession(input.session),
-    todos: input.session.todoItems ?? [],
   };
-}
-
-function summarizeActiveSpec(specRuntime?: SpecRuntime) {
-  const spec = specRuntime?.activeSpec;
-  if (!spec) {
-    return undefined;
-  }
-  return {
-    id: spec.id,
-    title: spec.title,
-    stage: spec.stage,
-    status: spec.status,
-    workspace: spec.workspace ? {
-      path: spec.workspace.path,
-      branch: spec.workspace.branch,
-    } : undefined,
-  };
-}
-
-function readTodoItems(output: string): WorkbenchTodoItem[] | undefined {
-  return extractWorkbenchTodoItems(output);
 }
 
 function listen(server: http.Server, host: string, port: number): Promise<number> {
@@ -520,5 +407,22 @@ function listen(server: http.Server, host: string, port: number): Promise<number
       }
       resolve(address.port);
     });
+  });
+}
+
+function recordWebWorkbenchEvent(
+  rootDir: string,
+  sessionId: string,
+  event: string,
+  details: Record<string, unknown>,
+): void {
+  recordHostMessage(rootDir, {
+    status: "accepted",
+    host: "web",
+    sessionId,
+    details: {
+      event,
+      ...details,
+    },
   });
 }

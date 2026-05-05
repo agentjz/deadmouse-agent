@@ -20,13 +20,10 @@ export const APP_CONFIG_KEYS = [
   "managedTurnMaxElapsedMs",
   "maxReadBytes",
   "maxSearchResults",
-  "maxSpreadsheetPreviewRows",
-  "maxSpreadsheetPreviewColumns",
   "commandStallTimeoutMs",
   "commandMaxRetries",
   "commandRetryBackoffMs",
   "showReasoning",
-  "mcp",
   "telegram",
 ] as const satisfies ReadonlyArray<keyof AppConfig>;
 
@@ -49,13 +46,10 @@ const MUTABLE_CONFIG_KEYS = new Set<keyof AppConfig>([
   "managedTurnMaxElapsedMs",
   "maxReadBytes",
   "maxSearchResults",
-  "maxSpreadsheetPreviewRows",
-  "maxSpreadsheetPreviewColumns",
   "commandStallTimeoutMs",
   "commandMaxRetries",
   "commandRetryBackoffMs",
   "showReasoning",
-  "mcp",
   "telegram",
 ]);
 
@@ -84,8 +78,6 @@ export function coerceConfigValue(key: keyof AppConfig, rawValue: string): AppCo
     case "managedTurnMaxElapsedMs":
     case "maxReadBytes":
     case "maxSearchResults":
-    case "maxSpreadsheetPreviewRows":
-    case "maxSpreadsheetPreviewColumns":
     case "commandStallTimeoutMs":
     case "commandMaxRetries":
     case "commandRetryBackoffMs": {
@@ -99,7 +91,6 @@ export function coerceConfigValue(key: keyof AppConfig, rawValue: string): AppCo
     case "provider":
     case "profile":
       return rawValue.trim() as AppConfig[keyof AppConfig];
-    case "mcp":
     case "telegram": {
       const parsed = tryParseJson(rawValue);
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {

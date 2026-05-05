@@ -28,12 +28,12 @@ export function truncateVisiblePreview(value: string): string {
   return truncate(normalized, VISIBLE_RESULT_PREVIEW_MAX_CHARS);
 }
 
-export function shouldShowToolCallPreview(name: string, verbosity: TerminalVerbosity): boolean {
+export function shouldShowToolCallPreview(_name: string, _verbosity: TerminalVerbosity): boolean {
   return false;
 }
 
-export function shouldShowToolResultPreview(name: string, verbosity: TerminalVerbosity): boolean {
-  return name === "todo_write";
+export function shouldShowToolResultPreview(_name: string, _verbosity: TerminalVerbosity): boolean {
+  return false;
 }
 
 export function normalizeTerminalVerbosity(

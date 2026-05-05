@@ -186,7 +186,6 @@ export async function createSessionRecord(cwd: string): Promise<SessionRecord> {
     cwd,
     messageCount: 0,
     messages: [],
-    todoItems: [],
     taskState: createEmptyTaskState(timestamp),
     checkpoint: createEmptyCheckpoint(timestamp),
     verificationState: createEmptyVerificationState(timestamp),

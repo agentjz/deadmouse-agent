@@ -2,7 +2,6 @@ import { expandStartToToolBoundary, shouldIncludeStoredAssistantReasoning } from
 import { createPromptContextDiagnostics } from "../../prompt/requestDiagnostics.js";
 import { renderPromptLayers } from "../../prompt/format.js";
 import { measurePromptLayers } from "../../prompt/metrics.js";
-import { compactToolPayload } from "../../toolResults/preview.js";
 import { findLatestUserInputIndex, isInternalMessage, sliceCurrentUserInputFrame } from "../../session/turnFrame.js";
 import type { ProviderMessage } from "../../provider/contract.js";
 import type { PromptLayerMetrics, PromptLayers } from "../../prompt/types.js";
@@ -156,7 +155,7 @@ function compactTailMessages(messages: StoredMessage[], aggressive: boolean): St
     if (message.role === "tool") {
       return {
         ...message,
-        content: compactToolPayload(message.name, message.content ?? "", aggressive ? 320 : 700),
+        content: truncate(message.content ?? "", aggressive ? 320 : 700),
       };
     }
 
@@ -239,11 +238,7 @@ function summarizeStoredMessage(message: StoredMessage): string {
   }
 
   if (message.role === "tool") {
-    return `Tool ${message.name ?? "unknown"} returned: ${compactToolPayload(
-      message.name,
-      message.content ?? "",
-      220,
-    )}`;
+    return `Tool ${message.name ?? "unknown"} returned: ${truncate(oneLine(message.content ?? ""), 220)}`;
   }
 
   return "";

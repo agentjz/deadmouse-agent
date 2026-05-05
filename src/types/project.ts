@@ -1,5 +1,3 @@
-import type { LoadedSkill } from "../capabilities/skills/types.js";
-
 export interface LoadedInstructionFile {
   path: string;
   relativePath: string;
@@ -24,6 +22,5 @@ export interface ProjectContext {
   instructions: LoadedInstructionFile[];
   instructionText: string;
   instructionTruncated: boolean;
-  skills: LoadedSkill[];
   ignoreRules: ProjectIgnoreRule[];
 }

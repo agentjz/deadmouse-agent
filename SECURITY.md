@@ -8,13 +8,12 @@ Do not include API keys, tokens, private credentials, user data, `.kitty/.env`, 
 
 Priority security areas:
 
-- credential exposure through `.kitty/.env`, environment variables, provider config, Telegram config, or MCP config
-- filesystem writes outside the intended project or mirror-world boundary
+- credential exposure through `.kitty/.env`, environment variables, provider config, or Telegram config
+- filesystem writes outside the intended project boundary
 - tool execution that bypasses formal tool governance
-- capability packages that bypass `Capability -> Assignment -> Execution -> Progress -> Artifact -> Closeout -> WakeSignal -> Lead`
-- persisted runtime state that can corrupt session truth, execution ledgers, trace records, artifacts, or recovery facts
-- external integrations that smuggle hidden strategy into the machine layer
+- persisted runtime state that can corrupt session truth, tool records, artifacts, or recovery facts
+- hidden integrations that smuggle strategy into the runtime layer
 
-Security fixes should remove the broken path directly. Do not add compatibility branches, legacy aliases, warning theater, or fake confirmations as a substitute for fixing the boundary. If an old path is unsafe, delete it, update the spec, update the tests, and verify the full system.
+Security fixes should remove the broken path directly. Do not add compatibility branches, legacy aliases, warning theater, or fake confirmations as a substitute for fixing the boundary. If an old path is unsafe, delete it, update the tests, and verify the full system.
 
 Security reports are judged by code facts and reproducible runtime evidence. Speculation is not enough; durable evidence wins.

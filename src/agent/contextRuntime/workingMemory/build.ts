@@ -1,11 +1,9 @@
 import { normalizeCheckpoint } from "../../checkpoint.js";
 import { fingerprintObjective, normalizeText, takeLastUnique } from "../../checkpoint/shared.js";
-import { normalizeTodoItems } from "../../session/todos.js";
 import type {
   AcceptanceState,
   SessionCheckpoint,
   TaskState,
-  TodoItem,
   VerificationState,
 } from "../../../types.js";
 import type { AgentWorkingMemory, WorkingMemoryVerification } from "./types.js";
@@ -14,13 +12,10 @@ const MAX_ACTIVE_FILES = 10;
 const MAX_PLANNED_ACTIONS = 8;
 const MAX_COMPLETED_ACTIONS = 8;
 const MAX_BLOCKERS = 6;
-const MAX_TODOS = 12;
-const MAX_EVIDENCE_ARTIFACTS = 6;
 const MAX_PENDING_CHECKS = 6;
 
 export interface BuildWorkingMemoryInput {
   taskState?: TaskState;
-  todoItems?: TodoItem[];
   checkpoint?: SessionCheckpoint;
   verificationState?: VerificationState;
   acceptanceState?: AcceptanceState;
@@ -45,7 +40,6 @@ export function buildAgentWorkingMemory(input: BuildWorkingMemoryInput): AgentWo
       MAX_COMPLETED_ACTIONS,
     ),
     blockers: takeLastUnique(input.taskState?.blockers ?? [], MAX_BLOCKERS),
-    todos: normalizeTodoItems(input.todoItems).slice(0, MAX_TODOS),
     recentToolBatch: checkpoint?.recentToolBatch
       ? {
           tools: checkpoint.recentToolBatch.tools,
@@ -54,7 +48,6 @@ export function buildAgentWorkingMemory(input: BuildWorkingMemoryInput): AgentWo
           recordedAt: checkpoint.recentToolBatch.recordedAt,
         }
       : undefined,
-    evidenceArtifacts: (checkpoint?.evidenceArtifacts ?? []).slice(0, MAX_EVIDENCE_ARTIFACTS),
     verification,
     acceptance,
     checkpointPhase: checkpoint?.flow.reason

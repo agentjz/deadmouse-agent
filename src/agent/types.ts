@@ -1,14 +1,12 @@
-import type { SessionStoreLike } from "./session/store.js";
-import type { ToolRegistry } from "../capabilities/tools/core/types.js";
+﻿import type { SessionStoreLike } from "./session/store.js";
+import type { ToolRegistry } from "../agent/tools/core/types.js";
 import type { RuntimeConfig, RuntimeTerminalTransition, SessionRecord, ToolCallRecord } from "../types.js";
 import type { PromptRuntimeState } from "./prompt/types.js";
 import type { ToolExecutionResult } from "../types.js";
 
 export interface AgentIdentity {
-  kind: "lead" | "teammate" | "subagent";
+  kind: "lead";
   name: string;
-  role?: string;
-  teamName?: string;
 }
 
 export interface BeforeToolCallHookContext {
@@ -31,24 +29,9 @@ export interface AfterToolCallHookResult {
   result?: ToolExecutionResult;
 }
 
-export interface AgentDispatchEvent {
-  profile: "teammate" | "subagent" | "background" | "dreaming";
-  actorName: string;
-  executionId: string;
-  taskId?: number;
-  pid?: number;
-  summary?: string;
-}
-
 export interface AgentCallbacks {
   onModelWaitStart?: () => void;
   onModelWaitStop?: () => void;
-  onDispatch?: (event: AgentDispatchEvent) => void;
-  onExecutionForegroundStream?: (event: {
-    executionId: string;
-    label: string;
-    streamPath: string;
-  }) => Promise<void> | void;
   onStatus?: (text: string) => void;
   onAssistantStage?: (text: string) => void;
   onAssistantDelta?: (delta: string) => void;

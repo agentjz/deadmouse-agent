@@ -99,7 +99,7 @@ export function appendRuntimeLineEvent(event) {
 
 export function appendExecutionStarted(event) {
   appendRuntimeLineEvent({
-    channel: profileToChannel(event.profile),
+    channel: "lead",
     kind: "dispatch",
     message: [event.actorName, event.summary || event.executionId].filter(Boolean).join(" "),
     executionId: event.executionId,
@@ -184,13 +184,4 @@ function normalizeRuntimeEvent(event) {
 
 function eventKey(event) {
   return `${event.channel}:${event.executionId || "lead"}`;
-}
-
-function profileToChannel(value) {
-  const normalized = String(value || "").toLowerCase();
-  if (normalized.includes("dream")) return "dream";
-  if (normalized.includes("team") || normalized.includes("teammate")) return "team";
-  if (normalized.includes("subagent")) return "subagent";
-  if (normalized.includes("background")) return "background";
-  return "lead";
 }

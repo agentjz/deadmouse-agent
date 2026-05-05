@@ -1,5 +1,4 @@
 import { formatPromptBlock } from "../prompt/format.js";
-import { BUDDHA_PROFILE } from "./buddha/index.js";
 import { CAVEMAN_PROFILE } from "./caveman/index.js";
 import { GROK_PROFILE } from "./grok/index.js";
 import { INTP_PROFILE } from "./intp/index.js";
@@ -9,7 +8,6 @@ const PROFILES = new Map<string, AgentProfile>([
   [INTP_PROFILE.id, INTP_PROFILE],
   [GROK_PROFILE.id, GROK_PROFILE],
   [CAVEMAN_PROFILE.id, CAVEMAN_PROFILE],
-  [BUDDHA_PROFILE.id, BUDDHA_PROFILE],
 ]);
 
 export function resolveAgentProfile(id: string): AgentProfile {

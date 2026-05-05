@@ -1,5 +1,5 @@
 import { isAbortError } from "../abort.js";
-import { createShellOutputCapture } from "../../foundation/tools/outputCapture.js";
+import { createBashOutputCapture } from "../../agent/tools/outputCapture.js";
 import { launchCommand } from "./launch.js";
 import { normalizeCommandForPlatform } from "./platform.js";
 
@@ -84,7 +84,7 @@ async function runCommandOnce(options: CommandRunOptions): Promise<CommandRunRes
   let forceKillTimer: NodeJS.Timeout | null = null;
 
   const { subprocess } = await launchCommand(options.command, options.cwd, options.timeoutMs, options.abortSignal);
-  const outputCapture = await createShellOutputCapture(options.outputCapture ?? {});
+  const outputCapture = await createBashOutputCapture(options.outputCapture ?? {});
 
   const clearTimers = () => {
     if (stallTimer) {
