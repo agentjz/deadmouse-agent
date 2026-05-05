@@ -1,5 +1,4 @@
 import type { RuntimeTransition } from "./runtimeTransitions.js";
-import type { ToolExecutionProtocolPolicy } from "./toolExecution.js";
 import type { ToolDiagnosticsReport } from "./diagnostics.js";
 
 export interface ToolCallRecord {
@@ -53,20 +52,13 @@ export interface SessionDiffState {
 }
 
 export type SessionCheckpointStatus = "active" | "completed";
-export type SessionCheckpointPhase = "active" | "continuation" | "resume" | "recovery";
+export type SessionCheckpointPhase = "active" | "recovery";
 
 export interface SessionCheckpointToolBatch {
   tools: string[];
   summary: string;
   changedPaths: string[];
   recordedAt: string;
-}
-
-export interface PendingToolCall {
-  id: string;
-  name: string;
-  policy: ToolExecutionProtocolPolicy;
-  preparedAt: string;
 }
 
 export type SessionRunStateStatus = "busy" | "idle";
@@ -85,7 +77,6 @@ export interface SessionCheckpointFlow {
   reason?: string;
   recoveryFailures?: number;
   runState?: SessionRunState;
-  pendingToolCalls?: PendingToolCall[];
   lastTransition?: RuntimeTransition;
   updatedAt: string;
 }

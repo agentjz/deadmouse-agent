@@ -1,8 +1,3 @@
-export interface RuntimeContinueInternalWakeReason {
-  code: "continue.internal_wake";
-  source: "managed_wake";
-}
-
 export interface RuntimeContinueToolBatchReason {
   code: "continue.after_tool_batch";
   toolNames: string[];
@@ -25,48 +20,16 @@ export interface RuntimeRecoverProviderRequestReason {
   delayMs: number;
 }
 
-export interface RuntimeYieldToolStepLimitReason {
-  code: "yield.tool_step_limit";
-  toolSteps: number;
-  limit?: number;
-}
-
-export interface RuntimePauseProviderRecoveryBudgetExhaustedReason {
-  code: "pause.provider_recovery_budget_exhausted";
-  pauseReason: string;
-  attemptsUsed: number;
-  maxAttempts: number;
-  elapsedMs: number;
-  maxElapsedMs: number;
-  lastError: string;
-}
-
-export interface RuntimePauseManagedSliceBudgetExhaustedReason {
-  code: "pause.managed_slice_budget_exhausted";
-  pauseReason: string;
-  slicesUsed: number;
-  maxSlices: number;
-  elapsedMs: number;
-  maxElapsedMs?: number;
-}
-
 export interface RuntimeFinalizeCompletedReason {
   code: "finalize.completed";
   changedPaths: string[];
 }
 
 export type RuntimeContinueReason =
-  | RuntimeContinueInternalWakeReason
   | RuntimeContinueToolBatchReason
   | RuntimeContinueEmptyAssistantResponseReason;
 
 export type RuntimeRecoverReason = RuntimeRecoverProviderRequestReason;
-
-export type RuntimeYieldReason = RuntimeYieldToolStepLimitReason;
-
-export type RuntimePauseReason =
-  | RuntimePauseProviderRecoveryBudgetExhaustedReason
-  | RuntimePauseManagedSliceBudgetExhaustedReason;
 
 export type RuntimeFinalizeReason = RuntimeFinalizeCompletedReason;
 
@@ -82,18 +45,6 @@ export interface RuntimeRecoverTransition {
   timestamp: string;
 }
 
-export interface RuntimeYieldTransition {
-  action: "yield";
-  reason: RuntimeYieldReason;
-  timestamp: string;
-}
-
-export interface RuntimePauseTransition {
-  action: "pause";
-  reason: RuntimePauseReason;
-  timestamp: string;
-}
-
 export interface RuntimeFinalizeTransition {
   action: "finalize";
   reason: RuntimeFinalizeReason;
@@ -103,11 +54,6 @@ export interface RuntimeFinalizeTransition {
 export type RuntimeTransition =
   | RuntimeContinueTransition
   | RuntimeRecoverTransition
-  | RuntimeYieldTransition
-  | RuntimePauseTransition
   | RuntimeFinalizeTransition;
 
-export type RuntimeTerminalTransition =
-  | RuntimeYieldTransition
-  | RuntimePauseTransition
-  | RuntimeFinalizeTransition;
+export type RuntimeTerminalTransition = RuntimeFinalizeTransition;

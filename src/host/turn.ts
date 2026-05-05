@@ -1,10 +1,10 @@
 import { AgentTurnError, getErrorMessage } from "../agent/errors.js";
-import { runManagedAgentTurn } from "../agent/turn.js";
+import { runAgentTurn } from "../agent/turn.js";
 import { resolveProjectRoots } from "../context/repoRoots.js";
 import { enterCrashContext } from "../observability/crashRecorder.js";
 import { recordHostTurnFinished, recordHostTurnStarted } from "../observability/hostEvents.js";
 import { isAbortError } from "../utils/abort.js";
-import { createDefaultAgentToolRegistry } from "../agent/tools/registry.js";
+import { createDefaultAgentToolRegistry } from "../tools/registry.js";
 import type { HostTurnDependencies, HostTurnOptions, HostTurnOutcome } from "./types.js";
 
 const DEFAULT_IDENTITY = {
@@ -24,7 +24,7 @@ export async function runHostTurn(
     sessionId: options.session.id,
   });
   const createToolRegistry = dependencies.createToolRegistry ?? createDefaultAgentToolRegistry;
-  const runTurn = dependencies.runTurn ?? runManagedAgentTurn;
+  const runTurn = dependencies.runTurn ?? runAgentTurn;
   let toolRegistry: Awaited<ReturnType<typeof createToolRegistry>> | null = null;
 
   await recordHostTurnStarted(stateRootDir, {
@@ -88,13 +88,12 @@ export async function runHostTurn(
     });
     dependencies.onRunTurnStarted?.();
     const result = await resultPromise;
-    const status = result.paused ? "paused" : "completed";
     await recordHostTurnFinished(stateRootDir, {
       host,
       sessionId: result.session.id,
       identityKind: (options.identity ?? DEFAULT_IDENTITY).kind,
       identityName: (options.identity ?? DEFAULT_IDENTITY).name,
-      status,
+      status: "completed",
       durationMs: Date.now() - startedAt,
       cwd: options.cwd,
       details: {
@@ -103,10 +102,9 @@ export async function runHostTurn(
     });
 
     return {
-      status,
+      status: "completed",
       session: result.session,
       result,
-      pauseReason: result.pauseReason,
     };
   } catch (error) {
     const session = error instanceof AgentTurnError ? error.session : options.session;

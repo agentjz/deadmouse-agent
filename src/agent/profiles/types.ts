@@ -1,6 +1,6 @@
 import type { PromptRuntimeState } from "../prompt/types.js";
-import type { SessionConversationBrief } from "../contextRuntime/sessionBrief/types.js";
-import type { AgentWorkingMemory } from "../contextRuntime/workingMemory/types.js";
+import type { SessionConversationBrief } from "../../context/runtime/sessionBrief/types.js";
+import type { AgentWorkingMemory } from "../../context/runtime/workingMemory/types.js";
 import type {
   ProjectContext,
   RuntimeConfig,

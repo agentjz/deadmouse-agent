@@ -1,4 +1,4 @@
-import type { SessionStore } from "../agent/session.js";
+import type { SessionStore } from "../session/index.js";
 import { runHostTurn } from "../host/turn.js";
 import type {
   RuntimeConfig,
@@ -49,10 +49,6 @@ export async function runOneShotPrompt(
 
   if (outcome.status === "failed" || outcome.status === "aborted") {
     runtimeUi.flush();
-  }
-
-  if (outcome.status === "paused" && outcome.pauseReason) {
-    ui.warn(outcome.pauseReason);
   }
 
   return {

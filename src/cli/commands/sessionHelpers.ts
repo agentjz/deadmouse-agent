@@ -2,7 +2,7 @@ import type { CliProgramDependencies } from "../dependencies.js";
 import type { RuntimeConfig, SessionRecord } from "../../types.js";
 
 export async function createSessionStore(sessionsDir: string) {
-  const { SessionStore } = await import("../../agent/session.js");
+  const { SessionStore } = await import("../../session/index.js");
   return new SessionStore(sessionsDir);
 }
 

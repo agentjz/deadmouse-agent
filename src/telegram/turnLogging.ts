@@ -1,4 +1,4 @@
-import type { ManagedTurnOptions } from "../agent/turn.js";
+import type { RunTurnOptions } from "../agent/turn.js";
 import type { TelegramLogger } from "./logger.js";
 import { TelegramTurnDisplay } from "./turnDisplay.js";
 
@@ -11,7 +11,7 @@ export function createLoggedTelegramCallbacks(
     chatId: number;
     sessionId: string;
   },
-): ManagedTurnOptions["callbacks"] {
+): RunTurnOptions["callbacks"] {
   return {
     ...display.callbacks,
     onStatus: (text) => {

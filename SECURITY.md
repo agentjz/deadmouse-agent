@@ -10,7 +10,7 @@ Priority security areas:
 
 - credential exposure through `.kitty/.env`, environment variables, provider config, or Telegram config
 - filesystem writes outside the intended project boundary
-- tool execution that bypasses formal tool governance
+- tool execution that bypasses the intended runtime boundary
 - persisted runtime state that can corrupt session truth, tool records, artifacts, or recovery facts
 - hidden integrations that smuggle strategy into the runtime layer
 

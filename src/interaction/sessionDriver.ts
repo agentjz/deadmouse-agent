@@ -1,8 +1,8 @@
 import { getErrorMessage } from "../agent/errors.js";
 import process from "node:process";
-import type { SessionStoreLike } from "../agent/session.js";
+import type { SessionStoreLike } from "../session/index.js";
 import { runHostTurn } from "../host/turn.js";
-import type { HostManagedTurnRunner } from "../host/types.js";
+import type { HostTurnRunner } from "../host/types.js";
 import type { RuntimeConfig, SessionRecord } from "../types.js";
 import { defaultInteractiveExitGuard, type InteractiveExitGuard, type InteractiveExitProcess } from "./exitGuard.js";
 import { handleLocalCommand, type LocalCommandResult } from "./localCommands.js";
@@ -22,7 +22,7 @@ export interface InteractiveSessionDriverOptions {
   sessionStore: SessionStoreLike;
   shell: InteractionShell;
   exitGuard?: InteractiveExitGuard;
-  runTurn?: HostManagedTurnRunner;
+  runTurn?: HostTurnRunner;
   localCommandHandler?: typeof handleLocalCommand;
   turnContextProvider?: (session: SessionRecord, input: string) => Promise<InteractiveTurnContext>;
 }
@@ -274,11 +274,6 @@ export class InteractiveSessionDriver {
       });
 
       this.session = outcome.session;
-      if (outcome.status === "paused" && outcome.pauseReason) {
-        this.options.shell.output.warn(outcome.pauseReason);
-        return;
-      }
-
       if (outcome.status === "aborted") {
         turnDisplay.flush();
         this.options.shell.output.warn(outcome.errorMessage ?? "Turn interrupted. You can keep chatting.");

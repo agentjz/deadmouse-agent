@@ -4,7 +4,7 @@ import path from "node:path";
 import type { TestContext } from "node:test";
 
 import type { RuntimeConfig } from "../../src/types.js";
-import type { ToolContext } from "../../src/agent/tools/core/types.js";
+import type { ToolContext } from "../../src/tools/core/types.js";
 import { ChangeStore } from "../../src/agent/changes/store.js";
 
 export async function createTempWorkspace(prefix: string, t: TestContext): Promise<string> {
@@ -24,21 +24,11 @@ export function createTestRuntimeConfig(root: string): RuntimeConfig {
     model: "gpt-5.5",
     profile: "intp",
     thinking: "enabled",
-    yieldAfterToolSteps: 5,
     contextWindowMessages: 30,
     maxContextChars: 48_000,
     contextSummaryChars: 8_000,
-    maxToolIterations: 8,
-    maxContinuationBatches: 8,
-    providerRecoveryMaxAttempts: 2,
-    providerRecoveryMaxElapsedMs: 30_000,
-    managedTurnMaxSlices: 4,
-    managedTurnMaxElapsedMs: 60_000,
     maxReadBytes: 120_000,
-    maxSearchResults: 80,
     commandStallTimeoutMs: 30_000,
-    commandMaxRetries: 0,
-    commandRetryBackoffMs: 1_000,
     showReasoning: true,
     telegram: {
       token: "",

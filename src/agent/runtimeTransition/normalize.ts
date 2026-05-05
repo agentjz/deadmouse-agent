@@ -1,10 +1,8 @@
 import type {
   RuntimeContinueTransition,
   RuntimeFinalizeTransition,
-  RuntimePauseTransition,
   RuntimeRecoverTransition,
   RuntimeTransition,
-  RuntimeYieldTransition,
 } from "../../types.js";
 import {
   clampWholeNumber,
@@ -34,10 +32,6 @@ export function normalizeRuntimeTransition(
       return normalizeContinueTransition(reason as RuntimeContinueTransition["reason"], normalizedTimestamp);
     case "recover":
       return normalizeRecoverTransition(reason as RuntimeRecoverTransition["reason"], normalizedTimestamp);
-    case "yield":
-      return normalizeYieldTransition(reason as RuntimeYieldTransition["reason"], normalizedTimestamp);
-    case "pause":
-      return normalizePauseTransition(reason as RuntimePauseTransition["reason"], normalizedTimestamp);
     case "finalize":
       return normalizeFinalizeTransition(reason as RuntimeFinalizeTransition["reason"], normalizedTimestamp);
     default:
@@ -50,15 +44,6 @@ function normalizeContinueTransition(
   timestamp: string,
 ): RuntimeContinueTransition | undefined {
   switch (reason.code) {
-    case "continue.internal_wake":
-      return {
-        action: "continue",
-        reason: {
-          code: reason.code,
-          source: "managed_wake",
-        },
-        timestamp,
-      };
     case "continue.after_tool_batch": {
       const toolNames = takeLastUnique(reason.toolNames);
       if (toolNames.length === 0) {
@@ -112,73 +97,6 @@ function normalizeRecoverTransition(
   };
 }
 
-function normalizeYieldTransition(
-  reason: RuntimeYieldTransition["reason"],
-  timestamp: string,
-): RuntimeYieldTransition | undefined {
-  if (reason.code !== "yield.tool_step_limit") {
-    return undefined;
-  }
-
-  return {
-    action: "yield",
-    reason: {
-      code: reason.code,
-      toolSteps: clampWholeNumber(reason.toolSteps, 1, 999, 1) ?? 1,
-      limit: clampWholeNumber(reason.limit, 1, 999, undefined),
-    },
-    timestamp,
-  };
-}
-
-function normalizePauseTransition(
-  reason: RuntimePauseTransition["reason"],
-  timestamp: string,
-): RuntimePauseTransition | undefined {
-  if (reason.code === "pause.provider_recovery_budget_exhausted") {
-    return {
-      action: "pause",
-      reason: {
-        code: reason.code,
-        pauseReason:
-          truncate(
-            normalizeText(reason.pauseReason) ||
-              "Provider recovery budget was exhausted.",
-          ) ||
-          "Provider recovery budget was exhausted.",
-        attemptsUsed: clampWholeNumber(reason.attemptsUsed, 0, 999, 0) ?? 0,
-        maxAttempts: clampWholeNumber(reason.maxAttempts, 1, 999, 1) ?? 1,
-        elapsedMs: clampWholeNumber(reason.elapsedMs, 0, 3_600_000, 0) ?? 0,
-        maxElapsedMs: clampWholeNumber(reason.maxElapsedMs, 1, 3_600_000, 1) ?? 1,
-        lastError: truncate(normalizeText(reason.lastError) || "request failed") || "request failed",
-      },
-      timestamp,
-    };
-  }
-
-  if (reason.code === "pause.managed_slice_budget_exhausted") {
-    return {
-      action: "pause",
-      reason: {
-        code: reason.code,
-        pauseReason:
-          truncate(
-            normalizeText(reason.pauseReason) ||
-              "Managed slice budget was exhausted.",
-          ) ||
-          "Managed slice budget was exhausted.",
-        slicesUsed: clampWholeNumber(reason.slicesUsed, 0, 999, 0) ?? 0,
-        maxSlices: clampWholeNumber(reason.maxSlices, 1, 999, 1) ?? 1,
-        elapsedMs: clampWholeNumber(reason.elapsedMs, 0, 3_600_000, 0) ?? 0,
-        maxElapsedMs: clampWholeNumber(reason.maxElapsedMs, 1, 3_600_000, undefined),
-      },
-      timestamp,
-    };
-  }
-
-  return undefined;
-}
-
 function normalizeFinalizeTransition(
   reason: RuntimeFinalizeTransition["reason"],
   timestamp: string,
@@ -198,7 +116,7 @@ function normalizeFinalizeTransition(
 }
 
 function normalizeAction(value: unknown): RuntimeTransition["action"] | undefined {
-  return value === "continue" || value === "recover" || value === "yield" || value === "pause" || value === "finalize"
+  return value === "continue" || value === "recover" || value === "finalize"
     ? value
     : undefined;
 }

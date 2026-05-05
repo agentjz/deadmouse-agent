@@ -1,31 +1,25 @@
 import { AgentTurnError, getErrorMessage } from "../errors.js";
-import { fetchAssistantResponse } from "../provider/index.js";
-import { evaluateProviderRecoveryBudget, resolveProviderRecoveryBudget } from "../provider/recoveryBudget.js";
-import { createProviderClientPool } from "../provider/client.js";
-import { buildRecoveryRequestConfig, buildRecoveryStatus, computeRecoveryDelayMs, isRecoverableTurnError, pickRequestModel, sleep } from "../provider/retryPolicy.js";
-import { injectInboxMessagesIfNeeded, loadPromptRuntimeState } from "./runtimeState.js";
+import { fetchAssistantResponse as fetchProviderAssistantResponse } from "../../provider/index.js";
+import { createProviderClientPool } from "../../provider/client.js";
+import { buildRecoveryRequestConfig, buildRecoveryStatus, computeRecoveryDelayMs, isRecoverableTurnError, sleep } from "../../provider/retryPolicy.js";
 import {
   buildContextRuntimePromptLayers,
   buildContextRuntimeRequest,
-  buildContextRuntimeToolProgress,
-} from "../contextRuntime/index.js";
-import { buildRunTurnResult, createProviderRecoveryBudgetPauseTransition, createProviderRecoveryTransition, createYieldTransition } from "../runtimeTransition.js";
+} from "../../context/runtime/index.js";
+import { createProviderRecoveryTransition } from "../runtimeTransition.js";
 import { resolveAgentProfile } from "../profiles/registry.js";
 import { emitAssistantFinalOutput, emitAssistantReasoning } from "./finalize.js";
-import { ToolLoopGuard } from "./loopGuard.js";
 import {
   initializeTurnSession,
-  persistCheckpointTransition,
   persistRecoveryTurn,
-  persistYieldedTurn,
 } from "./persistence.js";
 import { processToolCallBatch } from "./toolBatchLifecycle.js";
 import { resolveToollessTurn } from "./toolless.js";
-import { emitTurnProgressStatus, extendPromptLayersForTurnState } from "./state.js";
+import { extendPromptLayersForTurnState } from "./state.js";
 import type { AgentIdentity, RunTurnOptions, RunTurnResult } from "../types.js";
 import { ChangeStore } from "../changes/store.js";
 import { loadProjectContext } from "../../context/projectContext.js";
-import { createDefaultAgentToolRegistry } from "../tools/registry.js";
+import { createDefaultAgentToolRegistry } from "../../tools/registry.js";
 import { throwIfAborted } from "../../utils/abort.js";
 
 export type { AgentCallbacks, RunTurnOptions } from "../types.js";
@@ -43,42 +37,13 @@ export async function runAgentTurn(options: RunTurnOptions): Promise<RunTurnResu
   const ownsToolRegistry = !options.toolRegistry;
   const toolRegistry = options.toolRegistry ?? (await createDefaultAgentToolRegistry(options.config));
   const changeStore = new ChangeStore(options.config.paths.changesDir);
-  const loopGuard = new ToolLoopGuard();
-  const softToolLimit = Math.max(1, options.config.maxToolIterations);
-  const continuationWindow = softToolLimit * Math.max(1, options.config.maxContinuationBatches);
-  const recoveryBudget = resolveProviderRecoveryBudget(options.config);
   let changedPaths = new Set<string>();
   let consecutiveRequestFailures = 0;
-  let recoveryStartedAtMs: number | undefined;
   try {
-    for (let iteration = 0; ; iteration += 1) {
+    for (;;) {
       throwIfAborted(options.abortSignal, "Turn aborted by user.");
-      const toolProgress = buildContextRuntimeToolProgress({
-        iteration,
-        maxToolIterations: options.config.maxToolIterations,
-        maxContinuationBatches: options.config.maxContinuationBatches,
-        yieldAfterToolSteps: options.yieldAfterToolSteps,
-      });
-      if (toolProgress.shouldYield) {
-        const transition = createYieldTransition(iteration, options.yieldAfterToolSteps);
-        session = await persistYieldedTurn(session, options.sessionStore, transition);
-        options.callbacks?.onStatus?.(`Yielding after ${iteration} tool steps so the managed runtime can reconcile state.`);
-        return buildRunTurnResult({
-          session,
-          changedPaths,
-          transition,
-        });
-      }
-      session = await injectInboxMessagesIfNeeded(session, options, identity, projectContext.stateRootDir);
       throwIfAborted(options.abortSignal, "Turn aborted by user.");
-      const runtimeState = await loadPromptRuntimeState(
-        projectContext.stateRootDir,
-        identity,
-        options.cwd,
-        session.taskState?.objective,
-      );
       const turnRuntimeState = {
-        ...runtimeState,
         ...(options.runtimePromptState ?? {}),
         identity,
       };
@@ -92,8 +57,8 @@ export async function runAgentTurn(options: RunTurnOptions): Promise<RunTurnResu
         profile,
         messages: session.messages,
       });
-      promptLayers = extendPromptLayersForTurnState(promptLayers, iteration, softToolLimit, consecutiveRequestFailures);
-      const requestModel = pickRequestModel(turnModelConfig.provider, turnModelConfig.model, consecutiveRequestFailures);
+      promptLayers = extendPromptLayersForTurnState(promptLayers, consecutiveRequestFailures);
+      const requestModel = turnModelConfig.model;
       const requestConfig = buildRecoveryRequestConfig(options.config, requestModel, consecutiveRequestFailures);
       const requestContext = buildContextRuntimeRequest({
         prompt: promptLayers,
@@ -104,56 +69,47 @@ export async function runAgentTurn(options: RunTurnOptions): Promise<RunTurnResu
       if (requestContext.compressed) {
         options.callbacks?.onStatus?.(`Context compressed automatically at ~${requestContext.estimatedChars} chars to keep the turn running.`);
       }
-      emitTurnProgressStatus(options.callbacks, iteration, softToolLimit, continuationWindow);
       let response;
       options.callbacks?.onModelWaitStart?.();
       try {
-        response = await fetchAssistantResponse(
-          client,
-          requestContext.messages,
-          {
+        const modelRequest = {
+          messages: requestContext.messages,
+          request: {
             provider: turnModelConfig.provider,
             model: requestModel,
             thinking: turnModelConfig.thinking,
             reasoningEffort: turnModelConfig.reasoningEffort,
             maxOutputTokens: turnModelConfig.maxOutputTokens,
           },
-          turnToolDefinitions,
-          options.callbacks,
-          options.abortSignal,
-          undefined,
-          {
+          tools: turnToolDefinitions,
+          callbacks: options.callbacks,
+          abortSignal: options.abortSignal,
+          observability: {
             rootDir: projectContext.stateRootDir,
             sessionId: session.id,
             identityKind: identity.kind,
             identityName: identity.name,
             configuredModel: turnModelConfig.model,
           },
-        );
+        };
+        response = options.fetchAssistantResponse
+          ? await options.fetchAssistantResponse(modelRequest)
+          : await fetchProviderAssistantResponse(
+            client,
+            modelRequest.messages,
+            modelRequest.request,
+            modelRequest.tools,
+            modelRequest.callbacks,
+            modelRequest.abortSignal,
+            undefined,
+            modelRequest.observability,
+          );
         consecutiveRequestFailures = 0;
-        recoveryStartedAtMs = undefined;
       } catch (error) {
         if (!isRecoverableTurnError(error)) {
           throw error;
         }
         consecutiveRequestFailures += 1;
-        recoveryStartedAtMs = recoveryStartedAtMs ?? Date.now();
-        const budgetDecision = evaluateProviderRecoveryBudget({
-          budget: recoveryBudget,
-          attemptsUsed: consecutiveRequestFailures,
-          recoveryStartedAtMs,
-          lastError: error,
-        });
-        if (budgetDecision.exhausted) {
-          const transition = createProviderRecoveryBudgetPauseTransition(budgetDecision.snapshot);
-          session = await persistCheckpointTransition(session, options.sessionStore, transition);
-          options.callbacks?.onStatus?.(transition.reason.pauseReason);
-          return buildRunTurnResult({
-            session,
-            changedPaths,
-            transition,
-          });
-        }
         const delayMs = computeRecoveryDelayMs(consecutiveRequestFailures);
         const transition = createProviderRecoveryTransition({
           consecutiveFailures: consecutiveRequestFailures,
@@ -165,7 +121,7 @@ export async function runAgentTurn(options: RunTurnOptions): Promise<RunTurnResu
         });
         session = await persistRecoveryTurn(session, options.sessionStore, transition);
         options.callbacks?.onStatus?.(buildRecoveryStatus(transition));
-        await sleep(delayMs, options.abortSignal);
+        await (options.recoverySleep ?? sleep)(delayMs, options.abortSignal);
         continue;
       } finally {
         options.callbacks?.onModelWaitStop?.();
@@ -195,7 +151,6 @@ export async function runAgentTurn(options: RunTurnOptions): Promise<RunTurnResu
         toolRegistry,
         projectContext,
         changeStore,
-        loopGuard,
         changedPaths,
       });
       session = batchResult.session;
@@ -216,7 +171,6 @@ export async function runAgentTurn(options: RunTurnOptions): Promise<RunTurnResu
                 pendingToolCallCount: 0,
                 updatedAt: timestamp,
               },
-              pendingToolCalls: undefined,
               updatedAt: timestamp,
             },
             updatedAt: timestamp,

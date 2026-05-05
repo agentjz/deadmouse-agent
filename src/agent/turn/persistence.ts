@@ -3,15 +3,13 @@ import {
   noteCheckpointToolBatch,
   noteCheckpointTransition,
   noteCheckpointTurnInput,
-  noteCheckpointYield,
-} from "../checkpoint.js";
-import { createMessage } from "../session/messages.js";
-import { applyCurrentTurnFrame } from "../session/taskState.js";
-import type { SessionStoreLike } from "../session/store.js";
+} from "../../session/checkpoint.js";
+import { createMessage } from "../../session/messages.js";
+import { applyCurrentTurnFrame } from "../../session/taskState.js";
+import type { SessionStoreLike } from "../../session/store.js";
 import type {
   RuntimeRecoverTransition,
   RuntimeTransition,
-  RuntimeYieldTransition,
   SessionRecord,
   StoredMessage,
 } from "../../types.js";
@@ -36,14 +34,6 @@ export async function initializeTurnSession(
   const framed = applyCurrentTurnFrame(appended, input);
 
   return sessionStore.save(noteCheckpointTurnInput(framed, input));
-}
-
-export async function persistYieldedTurn(
-  session: SessionRecord,
-  sessionStore: SessionStoreLike,
-  transition: RuntimeYieldTransition,
-): Promise<SessionRecord> {
-  return sessionStore.save(noteCheckpointYield(session, transition));
 }
 
 export async function persistRecoveryTurn(

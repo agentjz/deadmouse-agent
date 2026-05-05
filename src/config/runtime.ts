@@ -68,36 +68,16 @@ export async function resolveRuntimeConfig(overrides: CliOverrides = {}): Promis
       maxOutputTokens:
         parseIntegerEnv(process.env.KITTY_MAX_OUTPUT_TOKENS) ?? fileConfig.maxOutputTokens,
       baseUrl: process.env.KITTY_BASE_URL ?? fileConfig.baseUrl,
-      yieldAfterToolSteps:
-        parseIntegerEnv(process.env.KITTY_YIELD_AFTER_TOOL_STEPS) ?? fileConfig.yieldAfterToolSteps,
       contextWindowMessages:
         parseIntegerEnv(process.env.KITTY_CONTEXT_WINDOW_MESSAGES) ?? fileConfig.contextWindowMessages,
       maxContextChars:
         parseIntegerEnv(process.env.KITTY_MAX_CONTEXT_CHARS) ?? fileConfig.maxContextChars,
       contextSummaryChars:
         parseIntegerEnv(process.env.KITTY_CONTEXT_SUMMARY_CHARS) ?? fileConfig.contextSummaryChars,
-      maxToolIterations:
-        parseIntegerEnv(process.env.KITTY_MAX_TOOL_ITERATIONS) ?? fileConfig.maxToolIterations,
-      maxContinuationBatches:
-        parseIntegerEnv(process.env.KITTY_MAX_CONTINUATION_BATCHES) ?? fileConfig.maxContinuationBatches,
-      providerRecoveryMaxAttempts:
-        parseIntegerEnv(process.env.KITTY_PROVIDER_RECOVERY_MAX_ATTEMPTS) ?? fileConfig.providerRecoveryMaxAttempts,
-      providerRecoveryMaxElapsedMs:
-        parseIntegerEnv(process.env.KITTY_PROVIDER_RECOVERY_MAX_ELAPSED_MS) ?? fileConfig.providerRecoveryMaxElapsedMs,
-      managedTurnMaxSlices:
-        parseIntegerEnv(process.env.KITTY_MANAGED_TURN_MAX_SLICES) ?? fileConfig.managedTurnMaxSlices,
-      managedTurnMaxElapsedMs:
-        parseIntegerEnv(process.env.KITTY_MANAGED_TURN_MAX_ELAPSED_MS) ?? fileConfig.managedTurnMaxElapsedMs,
       maxReadBytes:
         parseIntegerEnv(process.env.KITTY_MAX_READ_BYTES) ?? fileConfig.maxReadBytes,
-      maxSearchResults:
-        parseIntegerEnv(process.env.KITTY_MAX_SEARCH_RESULTS) ?? fileConfig.maxSearchResults,
       commandStallTimeoutMs:
         parseIntegerEnv(process.env.KITTY_COMMAND_STALL_TIMEOUT_MS) ?? fileConfig.commandStallTimeoutMs,
-      commandMaxRetries:
-        parseIntegerEnv(process.env.KITTY_COMMAND_MAX_RETRIES) ?? fileConfig.commandMaxRetries,
-      commandRetryBackoffMs:
-        parseIntegerEnv(process.env.KITTY_COMMAND_RETRY_BACKOFF_MS) ?? fileConfig.commandRetryBackoffMs,
       showReasoning:
         parseBooleanEnv(process.env.KITTY_SHOW_REASONING) ?? fileConfig.showReasoning,
       telegram: telegramConfig,

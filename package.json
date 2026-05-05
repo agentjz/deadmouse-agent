@@ -16,8 +16,7 @@
   "files": [
     "dist",
     "assets/web-workbench",
-    "README.md",
-    "README.en.md"
+    "README.md"
   ],
   "publishConfig": {
     "access": "public"

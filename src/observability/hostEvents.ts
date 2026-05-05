@@ -33,7 +33,7 @@ export async function recordHostTurnFinished(
   input: {
     host: string;
     sessionId: string;
-    status: "completed" | "paused" | "aborted" | "failed";
+    status: "completed" | "aborted" | "failed";
     durationMs: number;
     cwd: string;
     error?: unknown;

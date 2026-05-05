@@ -1,5 +1,5 @@
 import { isAbortError } from "../abort.js";
-import { createBashOutputCapture } from "../../agent/tools/outputCapture.js";
+import { createBashOutputCapture } from "../../tools/outputCapture.js";
 import { launchCommand } from "./launch.js";
 import { normalizeCommandForPlatform } from "./platform.js";
 
@@ -9,9 +9,6 @@ export interface CommandRunOptions {
   timeoutMs: number;
   stallTimeoutMs: number;
   abortSignal?: AbortSignal;
-  maxRetries: number;
-  retryBackoffMs: number;
-  canRetry: boolean;
   outputCapture?: {
     stateRootDir?: string;
     sessionId?: string;
@@ -36,45 +33,11 @@ export interface CommandRunResult {
 const STALL_KILL_TIMEOUT_MS = 5_000;
 
 export async function runCommandWithPolicy(options: CommandRunOptions): Promise<CommandRunResult> {
-  const attempts = Math.max(1, Math.trunc(options.maxRetries) + 1);
-  let lastResult: CommandRunResult | null = null;
   const normalizedCommand = normalizeCommandForPlatform(options.command);
-
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    lastResult = await runCommandOnce({
-      ...options,
-      command: normalizedCommand,
-    });
-
-    const success = lastResult.exitCode === 0 && !lastResult.timedOut && !lastResult.stalled;
-    if (success) {
-      return lastResult;
-    }
-
-    if (lastResult.aborted) {
-      return lastResult;
-    }
-
-    if (!options.canRetry || attempt >= attempts) {
-      return lastResult;
-    }
-
-    await sleep(options.retryBackoffMs * attempt, options.abortSignal);
-  }
-
-  return lastResult ?? {
-    exitCode: null,
-    output: "",
-    outputPath: undefined,
-    truncated: false,
-    outputChars: 0,
-    outputBytes: 0,
-    timedOut: false,
-    aborted: false,
-    stalled: false,
-    attempts: 0,
-    durationMs: 0,
-  };
+  return runCommandOnce({
+    ...options,
+    command: normalizedCommand,
+  });
 }
 
 async function runCommandOnce(options: CommandRunOptions): Promise<CommandRunResult> {
@@ -205,20 +168,4 @@ function isAbortedProcessResult(value: unknown, signal: AbortSignal | undefined)
   }
 
   return Boolean(signal?.aborted) || isAbortError(value);
-}
-
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(resolve, ms);
-    if (signal) {
-      signal.addEventListener(
-        "abort",
-        () => {
-          clearTimeout(timer);
-          reject(signal.reason ?? new Error("Command retry aborted."));
-        },
-        { once: true },
-      );
-    }
-  });
 }

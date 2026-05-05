@@ -1,5 +1,5 @@
 import type { AgentCallbacks, RunTurnResult } from "../agent/types.js";
-import type { SessionStoreLike } from "../agent/session.js";
+import type { SessionStoreLike } from "../session/index.js";
 import type { RuntimeConfig, SessionRecord } from "../types.js";
 import { runHostTurn } from "./turn.js";
 import type { HostTurnDependencies } from "./types.js";
@@ -33,7 +33,6 @@ export interface BoundHostTurnOptions<TActiveTurn> {
   onActiveTurnStart: (activeTurn: TActiveTurn) => void;
   onActiveTurnEnd: () => void;
   onCompleted?: (result: RunTurnResult, session: SessionRecord) => void;
-  onPaused?: (result: RunTurnResult, session: SessionRecord) => void;
   onAborted?: (session: SessionRecord) => void;
   onFailed?: (errorMessage: string, session: SessionRecord) => void;
 }
@@ -81,15 +80,6 @@ export async function runBoundHostTurn<TActiveTurn>(
 
     if (outcome.status === "completed") {
       options.onCompleted?.(outcome.result!, session);
-      return session;
-    }
-
-    if (outcome.status === "paused") {
-      if (outcome.pauseReason) {
-        options.output.warn(outcome.pauseReason);
-      }
-      options.display.noteTerminalState?.();
-      options.onPaused?.(outcome.result!, session);
       return session;
     }
 

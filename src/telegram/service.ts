@@ -1,8 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import type { SessionStoreLike } from "../agent/session.js";
-import type { HostManagedTurnRunner } from "../host/types.js";
+import type { SessionStoreLike } from "../session/index.js";
+import type { HostTurnRunner } from "../host/types.js";
 import type { RuntimeConfig, SessionRecord } from "../types.js";
 import { PerPeerCommandQueue } from "./commandQueue.js";
 import {
@@ -37,7 +37,7 @@ export interface TelegramServiceOptions {
   deliveryQueue: TelegramDeliveryQueue;
   attachmentStore?: TelegramAttachmentStoreLike;
   commandQueue?: PerPeerCommandQueue;
-  runTurn?: HostManagedTurnRunner;
+  runTurn?: HostTurnRunner;
   pollingSource?: TelegramLongPollingSource;
   logger?: TelegramLogger;
   sleep?: (ms: number) => Promise<void>;

@@ -1,7 +1,7 @@
 import { renderPromptLayers } from "./prompt/format.js";
 import { measurePromptLayers } from "./prompt/metrics.js";
 import type { PromptLayerMetrics, PromptLayers, PromptRuntimeState } from "./prompt/types.js";
-import { buildContextRuntimePromptLayers } from "./contextRuntime/index.js";
+import { buildContextRuntimePromptLayers } from "../context/runtime/index.js";
 import type { AgentProfile } from "./profiles/types.js";
 import type {
   ProjectContext,

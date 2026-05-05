@@ -1,5 +1,5 @@
-import type { SessionStoreLike } from "../agent/session.js";
-import { isSessionNotFoundError } from "../agent/session/errors.js";
+import type { SessionStoreLike } from "../session/index.js";
+import { isSessionNotFoundError } from "../session/errors.js";
 import type { SessionRecord } from "../types.js";
 import type {
   EnsureBoundSessionOptions,

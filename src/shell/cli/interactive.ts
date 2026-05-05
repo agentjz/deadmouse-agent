@@ -1,4 +1,4 @@
-import type { SessionStoreLike } from "../../agent/session.js";
+import type { SessionStoreLike } from "../../session/index.js";
 import { loadProjectContext } from "../../context/projectContext.js";
 import { InteractiveSessionDriver } from "../../interaction/sessionDriver.js";
 import type { InteractiveSessionDriverOptions } from "../../interaction/sessionDriver.js";

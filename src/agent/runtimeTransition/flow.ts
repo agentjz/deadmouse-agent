@@ -1,6 +1,4 @@
-import { isInternalMessage } from "../session/turnFrame.js";
 import type {
-  PendingToolCall,
   SessionRunState,
   SessionRunStateSource,
   RuntimeContinueTransition,
@@ -21,7 +19,6 @@ interface BuildCheckpointFlowInput {
     status: SessionRunState["status"];
     source?: SessionRunStateSource;
   };
-  pendingToolCalls?: PendingToolCall[];
   timestamp?: string;
 }
 
@@ -32,11 +29,9 @@ export function normalizeCheckpointFlow(
 ): SessionCheckpointFlow {
   const lastTransition = normalizeRuntimeTransition(flow?.lastTransition, timestamp);
   const phase = normalizePhase(lastTransition ? getRuntimeTransitionPhase(lastTransition) : flow?.phase, status);
-  const pendingToolCalls = status === "completed" ? undefined : normalizePendingToolCalls(flow?.pendingToolCalls, timestamp);
   const runState = normalizeRunState({
     current: flow?.runState,
     status,
-    pendingToolCalls,
     timestamp,
   });
 
@@ -50,7 +45,6 @@ export function normalizeCheckpointFlow(
           ? clampWholeNumber(flow?.recoveryFailures, 1, 50, undefined)
           : undefined,
     runState,
-    pendingToolCalls,
     lastTransition,
     updatedAt: normalizeTimestamp(flow?.updatedAt, timestamp),
   };
@@ -63,13 +57,9 @@ export function buildCheckpointFlow(input: BuildCheckpointFlowInput): SessionChe
     transition ? getRuntimeTransitionPhase(transition) : input.defaultPhase ?? input.current?.phase,
     input.status,
   );
-  const pendingToolCalls = input.status === "completed"
-    ? undefined
-    : normalizePendingToolCalls(input.pendingToolCalls ?? input.current?.pendingToolCalls, timestamp);
   const runState = normalizeRunState({
     current: input.current?.runState,
     status: input.status,
-    pendingToolCalls,
     override: input.runState,
     timestamp,
   });
@@ -79,7 +69,6 @@ export function buildCheckpointFlow(input: BuildCheckpointFlowInput): SessionChe
     reason: transition ? formatRuntimeTransitionReason(transition) : undefined,
     recoveryFailures: transition?.action === "recover" ? transition.reason.consecutiveFailures : undefined,
     runState,
-    pendingToolCalls,
     lastTransition: transition,
     updatedAt: timestamp,
   };
@@ -89,17 +78,6 @@ export function getTurnInputTransition(
   input: string,
   timestamp = new Date().toISOString(),
 ): RuntimeContinueTransition | undefined {
-  if (isInternalMessage(input)) {
-    return {
-      action: "continue",
-      reason: {
-        code: "continue.internal_wake",
-        source: "managed_wake",
-      },
-      timestamp,
-    };
-  }
-
   return undefined;
 }
 
@@ -110,22 +88,6 @@ export function formatRuntimeTransitionReason(transition: RuntimeTransition): st
 export function getRuntimeTransitionPhase(transition: RuntimeTransition): SessionCheckpointPhase {
   if (transition.action === "recover") {
     return "recovery";
-  }
-
-  if (transition.action === "pause" && transition.reason.code === "pause.provider_recovery_budget_exhausted") {
-    return "recovery";
-  }
-
-  if (transition.action === "pause" && transition.reason.code === "pause.managed_slice_budget_exhausted") {
-    return "continuation";
-  }
-
-  if (transition.action === "yield") {
-    return "continuation";
-  }
-
-  if (transition.action === "continue" && transition.reason.code === "continue.internal_wake") {
-    return "continuation";
   }
 
   return "active";
@@ -139,74 +101,37 @@ function normalizePhase(
     return "active";
   }
 
-  return value === "continuation" || value === "resume" || value === "recovery" ? value : "active";
-}
-
-function normalizePendingToolCalls(
-  pendingToolCalls: PendingToolCall[] | undefined,
-  timestamp: string,
-): PendingToolCall[] | undefined {
-  if (!Array.isArray(pendingToolCalls) || pendingToolCalls.length === 0) {
-    return undefined;
-  }
-
-  const seen = new Set<string>();
-  const result: PendingToolCall[] = [];
-  for (const pending of pendingToolCalls) {
-    if (!pending || typeof pending !== "object") {
-      continue;
-    }
-
-    const id = normalizeText(pending.id);
-    const name = normalizeText(pending.name);
-    if (!id || !name || seen.has(id)) {
-      continue;
-    }
-
-    seen.add(id);
-    result.push({
-      id,
-      name,
-      policy: pending.policy === "parallel" ? "parallel" : "sequential",
-      preparedAt: normalizeTimestamp(pending.preparedAt, timestamp),
-    });
-  }
-
-  return result.length > 0 ? result : undefined;
+  return value === "recovery" ? value : "active";
 }
 
 function normalizeRunState(input: {
   current: SessionRunState | undefined;
   status: SessionCheckpointStatus;
-  pendingToolCalls: PendingToolCall[] | undefined;
   override?: {
     status: SessionRunState["status"];
     source?: SessionRunStateSource;
   };
   timestamp: string;
 }): SessionRunState {
-  const pendingToolCallCount = input.pendingToolCalls?.length ?? 0;
   const normalizedStatus = input.status === "completed"
     ? "idle"
     : input.override?.status === "busy" || input.override?.status === "idle"
       ? input.override.status
-      : pendingToolCallCount > 0
+      : input.current?.status === "busy"
         ? "busy"
-        : input.current?.status === "busy"
-          ? "busy"
-          : "idle";
+        : "idle";
 
   const source = normalizeRunStateSource(
     input.status === "completed"
       ? "checkpoint"
-      : input.override?.source ?? (pendingToolCallCount > 0 ? "tool_batch" : input.current?.source),
+      : input.override?.source ?? input.current?.source,
     normalizedStatus,
   );
 
   return {
     status: normalizedStatus,
     source,
-    pendingToolCallCount,
+    pendingToolCallCount: 0,
     updatedAt: input.timestamp,
   };
 }

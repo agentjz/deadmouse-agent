@@ -10,9 +10,12 @@ const CURRENT_SOURCE_ROOTS = [
   "src/interaction",
   "src/observability",
   "src/project",
+  "src/provider",
   "src/runtime-ui",
+  "src/session",
   "src/shell",
   "src/telegram",
+  "src/tools",
   "src/types",
   "src/utils",
   "src/web",
@@ -42,18 +45,18 @@ async function main(): Promise<void> {
   }
 
   for (const tool of FOUNDATION_TOOLS) {
-    const toolFile = `src/agent/tools/${tool}.ts`;
+    const toolFile = `src/tools/${tool}.ts`;
     if (!await isFile(path.join(root, toolFile))) {
       findings.push(`${toolFile}: expected foundation tool file is missing`);
     }
   }
 
   const toolNames = await readAgentCoreToolNames(root).catch((error: unknown) => {
-    findings.push(`src/agent/tools/index.ts: ${error instanceof Error ? error.message : String(error)}`);
+    findings.push(`src/tools/index.ts: ${error instanceof Error ? error.message : String(error)}`);
     return [];
   });
   if (toolNames.join(",") !== FOUNDATION_TOOLS.join(",")) {
-    findings.push(`src/agent/tools/index.ts: foundation tool tuple must be ${FOUNDATION_TOOLS.join(", ")}`);
+    findings.push(`src/tools/index.ts: foundation tool tuple must be ${FOUNDATION_TOOLS.join(", ")}`);
   }
 
   const packageJson = JSON.parse(await fs.readFile(path.join(root, "package.json"), "utf8")) as {
@@ -67,7 +70,7 @@ async function main(): Promise<void> {
   }
 
   const files = packageJson.files ?? [];
-  for (const expectedFile of ["dist", "assets/web-workbench", "README.md", "README.en.md"]) {
+  for (const expectedFile of ["dist", "assets/web-workbench", "README.md"]) {
     if (!files.includes(expectedFile)) {
       findings.push(`package.json: published files must include ${expectedFile}`);
     }
@@ -93,7 +96,7 @@ async function main(): Promise<void> {
 }
 
 async function readAgentCoreToolNames(root: string): Promise<string[]> {
-  const content = await fs.readFile(path.join(root, "src/agent/tools/index.ts"), "utf8");
+  const content = await fs.readFile(path.join(root, "src/tools/index.ts"), "utf8");
   const match = content.match(/AGENT_CORE_TOOL_NAMES\s*=\s*\[([^\]]+)\]\s*as const/);
   if (!match) {
     throw new Error("AGENT_CORE_TOOL_NAMES must be declared as a literal tuple");

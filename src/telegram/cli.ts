@@ -19,7 +19,7 @@ export async function createTelegramService(options: {
     { FileTelegramSessionMapStore },
     { TelegramService },
   ] = await Promise.all([
-    import("../agent/session.js"),
+    import("../session/index.js"),
     import("./botApiClient.js"),
     import("./deliveryQueue.js"),
     import("./logger.js"),

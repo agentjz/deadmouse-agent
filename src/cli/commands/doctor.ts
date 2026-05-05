@@ -1,6 +1,6 @@
 import type { Command } from "commander";
 
-import { probeProviderConnection } from "../../agent/provider/connection.js";
+import { probeProviderConnection } from "../../provider/connection.js";
 import type { CliOverrides, RuntimeConfig } from "../../types.js";
 import { ui } from "../../utils/console.js";
 

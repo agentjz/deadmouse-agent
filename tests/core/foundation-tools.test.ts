@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
-import { createDefaultAgentToolRegistry } from "../../src/agent/tools/registry.js";
+import { createDefaultAgentToolRegistry } from "../../src/tools/registry.js";
 import { createTempWorkspace, createTestRuntimeConfig, createToolContext, parseToolJson } from "./helpers.js";
 
 test("default agent tool registry exposes only read edit write bash", async (t) => {

@@ -21,7 +21,6 @@ export type {
   ProjectIgnoreRule,
 } from "./types/project.js";
 export type {
-  PendingToolCall,
   SessionCheckpoint,
   SessionCheckpointFlow,
   SessionCheckpointPhase,
@@ -40,29 +39,18 @@ export type {
 export type {
   RuntimeContinueEmptyAssistantResponseReason,
   RuntimeContinueReason,
-  RuntimeContinueInternalWakeReason,
   RuntimeContinueToolBatchReason,
   RuntimeContinueTransition,
   RuntimeFinalizeCompletedReason,
   RuntimeFinalizeReason,
   RuntimeFinalizeTransition,
-  RuntimePauseManagedSliceBudgetExhaustedReason,
-  RuntimePauseProviderRecoveryBudgetExhaustedReason,
-  RuntimePauseReason,
-  RuntimePauseTransition,
   RuntimeRecoverProviderRequestReason,
   RuntimeRecoverReason,
   RuntimeRecoverTransition,
   RuntimeTerminalTransition,
   RuntimeTransition,
-  RuntimeYieldReason,
-  RuntimeYieldToolStepLimitReason,
-  RuntimeYieldTransition,
 } from "./types/runtimeTransitions.js";
 export type {
   ToolExecutionMetadata,
-  ToolExecutionProtocolMetadata,
-  ToolExecutionProtocolPhase,
-  ToolExecutionProtocolPolicy,
   ToolExecutionResult,
 } from "./types/toolExecution.js";

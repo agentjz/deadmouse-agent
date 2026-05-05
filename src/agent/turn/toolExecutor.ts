@@ -1,7 +1,6 @@
-﻿import type { ChangeStore } from "../changes/store.js";
-import { ToolExecutionError } from "../tools/core/errors.js";
-import { readToolExecutionProtocol } from "../tools/core/toolFinalize.js";
-import { createToolRegistry } from "../tools/index.js";
+import type { ChangeStore } from "../changes/store.js";
+import { ToolExecutionError } from "../../tools/core/errors.js";
+import { createToolRegistry } from "../../tools/index.js";
 import type { ProjectContext, SessionRecord, ToolCallRecord, ToolExecutionResult } from "../../types.js";
 import type { RunTurnOptions } from "../types.js";
 import { isAbortError } from "../../utils/abort.js";
@@ -46,7 +45,7 @@ export function buildToolExecutionFailureResult(
   const payload: Record<string, unknown> = {
     ok: false,
     error: message,
-    hint: buildToolRecoveryHint(toolCall.function.name, toolCall.function.arguments, message),
+    hint: buildToolRecoveryHint(toolCall.function.name, message),
   };
 
   if (error instanceof ToolExecutionError) {
@@ -56,36 +55,13 @@ export function buildToolExecutionFailureResult(
     }
   }
 
-  const protocol = readToolExecutionProtocol(error);
-  if (protocol) {
-    payload.protocol = protocol;
-  }
-
   return {
     ok: false,
     output: JSON.stringify(payload, null, 2),
-    metadata: protocol ? { protocol } : undefined,
   };
 }
 
-export async function executePreparedToolCallWithRecovery(
-  toolRegistry: Pick<ReturnType<typeof createToolRegistry>, "runPrepared">,
-  preparedCall: Parameters<NonNullable<ReturnType<typeof createToolRegistry>["finalize"]>>[0],
-  context: Parameters<ReturnType<typeof createToolRegistry>["execute"]>[2],
-  toolCall: ToolCallRecord,
-): Promise<ToolExecutionResult> {
-  try {
-    const result = await toolRegistry.runPrepared?.(preparedCall, context);
-    if (!result) {
-      throw new Error(`Prepared execution was unavailable for ${toolCall.function.name}.`);
-    }
-    return result;
-  } catch (error) {
-    return buildToolExecutionFailureResult(toolCall, error);
-  }
-}
-
-function buildToolRecoveryHint(toolName: string, rawArgs: string, message: string): string {
+function buildToolRecoveryHint(toolName: string, message: string): string {
   const lower = message.toLowerCase();
 
   if (lower.includes("enoent") || lower.includes("no such file") || lower.includes("file not found")) {

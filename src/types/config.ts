@@ -21,21 +21,11 @@ export interface AppConfig {
   thinking?: ModelThinkingMode;
   reasoningEffort?: ModelReasoningEffort;
   maxOutputTokens?: number;
-  yieldAfterToolSteps: number;
   contextWindowMessages: number;
   maxContextChars: number;
   contextSummaryChars: number;
-  maxToolIterations: number;
-  maxContinuationBatches: number;
-  providerRecoveryMaxAttempts?: number;
-  providerRecoveryMaxElapsedMs?: number;
-  managedTurnMaxSlices?: number;
-  managedTurnMaxElapsedMs?: number;
   maxReadBytes: number;
-  maxSearchResults: number;
   commandStallTimeoutMs: number;
-  commandMaxRetries: number;
-  commandRetryBackoffMs: number;
   showReasoning: boolean;
   telegram: TelegramConfig;
 }

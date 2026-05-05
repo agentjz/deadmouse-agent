@@ -1,5 +1,5 @@
-import { noteCheckpointCompleted } from "../checkpoint.js";
-import { createMessage } from "../session/messages.js";
+import { noteCheckpointCompleted } from "../../session/checkpoint.js";
+import { createMessage } from "../../session/messages.js";
 import {
   buildRunTurnResult,
   createEmptyAssistantResponseTransition,

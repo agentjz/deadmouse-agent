@@ -1,32 +1,13 @@
-﻿import type { SessionStoreLike } from "./session/store.js";
-import type { ToolRegistry } from "../agent/tools/core/types.js";
+import type { SessionStoreLike } from "../session/store.js";
+import type { ToolRegistry } from "../tools/core/types.js";
 import type { RuntimeConfig, RuntimeTerminalTransition, SessionRecord, ToolCallRecord } from "../types.js";
+import type { FunctionToolDefinition } from "../tools/index.js";
+import type { ProviderMessage } from "../provider/contract.js";
 import type { PromptRuntimeState } from "./prompt/types.js";
-import type { ToolExecutionResult } from "../types.js";
 
 export interface AgentIdentity {
   kind: "lead";
   name: string;
-}
-
-export interface BeforeToolCallHookContext {
-  toolCall: ToolCallRecord;
-  session: SessionRecord;
-}
-
-export interface BeforeToolCallHookResult {
-  block?: boolean;
-  reason?: string;
-}
-
-export interface AfterToolCallHookContext {
-  toolCall: ToolCallRecord;
-  session: SessionRecord;
-  result: ToolExecutionResult;
-}
-
-export interface AfterToolCallHookResult {
-  result?: ToolExecutionResult;
 }
 
 export interface AgentCallbacks {
@@ -42,8 +23,6 @@ export interface AgentCallbacks {
   onToolCall?: (name: string, args: string) => void;
   onToolResult?: (name: string, output: string) => void;
   onToolError?: (name: string, error: string) => void;
-  beforeToolCall?: (context: BeforeToolCallHookContext) => Promise<BeforeToolCallHookResult | void> | BeforeToolCallHookResult | void;
-  afterToolCall?: (context: AfterToolCallHookContext) => Promise<AfterToolCallHookResult | void> | AfterToolCallHookResult | void;
 }
 
 export interface RunTurnOptions {
@@ -55,9 +34,31 @@ export interface RunTurnOptions {
   toolRegistry?: ToolRegistry;
   identity?: AgentIdentity;
   runtimePromptState?: Partial<PromptRuntimeState>;
-  yieldAfterToolSteps?: number;
   abortSignal?: AbortSignal;
   callbacks?: AgentCallbacks;
+  fetchAssistantResponse?: (input: ModelRequestInput) => Promise<AssistantResponse>;
+  recoverySleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
+}
+
+export interface ModelRequestInput {
+  messages: ProviderMessage[];
+  request: {
+    provider: string;
+    model: string;
+    thinking?: RuntimeConfig["thinking"];
+    reasoningEffort?: RuntimeConfig["reasoningEffort"];
+    maxOutputTokens?: RuntimeConfig["maxOutputTokens"];
+  };
+  tools: FunctionToolDefinition[];
+  callbacks?: AgentCallbacks;
+  abortSignal?: AbortSignal;
+  observability?: {
+    rootDir: string;
+    sessionId: string;
+    identityKind?: string;
+    identityName?: string;
+    configuredModel: string;
+  };
 }
 
 export interface AssistantResponse {
@@ -71,9 +72,5 @@ export interface AssistantResponse {
 export interface RunTurnResult {
   session: SessionRecord;
   changedPaths: string[];
-  yielded: boolean;
-  yieldReason?: string;
-  paused?: boolean;
-  pauseReason?: string;
   transition?: RuntimeTerminalTransition;
 }

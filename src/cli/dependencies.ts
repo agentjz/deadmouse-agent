@@ -1,4 +1,4 @@
-import type { SessionStore } from "../agent/session.js";
+import type { SessionStore } from "../session/index.js";
 import type { resolveCliRuntime } from "./runtime.js";
 import type { OneShotPromptRunResult } from "./oneShot.js";
 import type { RuntimeConfig, SessionRecord } from "../types.js";

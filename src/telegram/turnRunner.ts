@@ -1,9 +1,9 @@
 import path from "node:path";
 
-import type { SessionStoreLike } from "../agent/session.js";
+import type { SessionStoreLike } from "../session/index.js";
 import { runBoundHostTurn } from "../host/boundTurn.js";
 import { ensureBoundSession, persistBoundSession } from "../host/session.js";
-import type { HostManagedTurnRunner } from "../host/types.js";
+import type { HostTurnRunner } from "../host/types.js";
 import { resolveHostStateRoot } from "../observability/hostEvents.js";
 import type { RuntimeConfig, SessionRecord } from "../types.js";
 import type { TelegramAttachmentStoreLike } from "./attachmentStore.js";
@@ -39,7 +39,7 @@ export async function runTelegramTurn(options: {
   };
   logger: TelegramLogger;
   message: TelegramPrivateMessage | TelegramPrivateFileMessage;
-  runTurn?: HostManagedTurnRunner;
+  runTurn?: HostTurnRunner;
   enqueueReply: (chatId: number, text: string) => Promise<void>;
   markQueuedTurnStarted: (peerKey: string) => void;
   consumePendingStop: (peerKey: string) => boolean;
@@ -137,15 +137,6 @@ export async function runTelegramTurn(options: {
           options.onActiveTurnEnd(options.message.peerKey);
         },
         onCompleted: (result, nextSession) => {
-          options.logger.info("turn completed", {
-            peerKey: options.message.peerKey,
-            userId: options.message.userId,
-            chatId: options.message.chatId,
-            sessionId: nextSession.id,
-            detail: result.changedPaths.length > 0 ? `changed=${result.changedPaths.length}` : "changed=0",
-          });
-        },
-        onPaused: (result, nextSession) => {
           options.logger.info("turn completed", {
             peerKey: options.message.peerKey,
             userId: options.message.userId,

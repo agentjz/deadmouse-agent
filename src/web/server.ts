@@ -5,8 +5,8 @@ import path from "node:path";
 import express, { type Request, type Response } from "express";
 import { WebSocketServer } from "ws";
 
-import { SessionStore } from "../agent/session.js";
-import { readUserInput } from "../agent/session/turnFrame.js";
+import { SessionStore } from "../session/index.js";
+import { readUserInput } from "../session/turnFrame.js";
 import { getErrorMessage } from "../agent/errors.js";
 import { createPersistedSession } from "../host/session.js";
 import { runHostTurn } from "../host/turn.js";
@@ -236,7 +236,7 @@ export async function startWorkbenchServer(options: StartWorkbenchServerOptions)
       if (!assistantDoneSent) {
         broadcaster.send({ type: "assistant.done", createdAt: nowEventTime() });
       }
-      broadcaster.send({ type: "session.status", status: outcome.status === "failed" ? "error" : "idle", message: outcome.errorMessage ?? outcome.pauseReason, createdAt: nowEventTime() });
+      broadcaster.send({ type: "session.status", status: outcome.status === "failed" ? "error" : "idle", message: outcome.errorMessage, createdAt: nowEventTime() });
       const nextContext = await loadCurrentWorkbenchContext();
       broadcaster.send({
         type: "project.updated",

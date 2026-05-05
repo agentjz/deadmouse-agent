@@ -3,7 +3,7 @@ export type WorkbenchEvent =
   | { type: "project.updated"; cwd: string; projectName: string; createdAt: string }
   | { type: "session.status"; status: "idle" | "running" | "error"; message?: string; createdAt: string }
   | { type: "runtime.line"; channel: WorkbenchRuntimeChannel; kind: WorkbenchRuntimeLineKind; label?: string; message: string; detail?: string; executionId?: string; createdAt: string }
-  | { type: "execution.finished"; status: "completed" | "paused" | "aborted" | "failed"; createdAt: string }
+  | { type: "execution.finished"; status: "completed" | "aborted" | "failed"; createdAt: string }
   | { type: "assistant.done"; createdAt: string }
   | { type: "tool.call"; name: string; args: string; createdAt: string }
   | { type: "tool.result"; name: string; output: string; createdAt: string }

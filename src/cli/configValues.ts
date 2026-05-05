@@ -10,19 +10,11 @@ export const APP_CONFIG_KEYS = [
   "thinking",
   "reasoningEffort",
   "maxOutputTokens",
-  "yieldAfterToolSteps",
   "contextWindowMessages",
   "maxContextChars",
   "contextSummaryChars",
-  "maxToolIterations",
-  "maxContinuationBatches",
-  "managedTurnMaxSlices",
-  "managedTurnMaxElapsedMs",
   "maxReadBytes",
-  "maxSearchResults",
   "commandStallTimeoutMs",
-  "commandMaxRetries",
-  "commandRetryBackoffMs",
   "showReasoning",
   "telegram",
 ] as const satisfies ReadonlyArray<keyof AppConfig>;
@@ -36,19 +28,11 @@ const MUTABLE_CONFIG_KEYS = new Set<keyof AppConfig>([
   "thinking",
   "reasoningEffort",
   "maxOutputTokens",
-  "yieldAfterToolSteps",
   "contextWindowMessages",
   "maxContextChars",
   "contextSummaryChars",
-  "maxToolIterations",
-  "maxContinuationBatches",
-  "managedTurnMaxSlices",
-  "managedTurnMaxElapsedMs",
   "maxReadBytes",
-  "maxSearchResults",
   "commandStallTimeoutMs",
-  "commandMaxRetries",
-  "commandRetryBackoffMs",
   "showReasoning",
   "telegram",
 ]);
@@ -71,16 +55,8 @@ export function coerceConfigValue(key: keyof AppConfig, rawValue: string): AppCo
     case "contextWindowMessages":
     case "maxContextChars":
     case "contextSummaryChars":
-    case "yieldAfterToolSteps":
-    case "maxToolIterations":
-    case "maxContinuationBatches":
-    case "managedTurnMaxSlices":
-    case "managedTurnMaxElapsedMs":
     case "maxReadBytes":
-    case "maxSearchResults":
-    case "commandStallTimeoutMs":
-    case "commandMaxRetries":
-    case "commandRetryBackoffMs": {
+    case "commandStallTimeoutMs": {
       const parsed = Number(rawValue);
       if (!Number.isFinite(parsed)) {
         throw new Error(`Expected a number for ${key}.`);
